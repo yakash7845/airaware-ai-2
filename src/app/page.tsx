@@ -42,8 +42,8 @@ export default function OverviewPage() {
   if (error || !snapshot || !insights) {
     return (
       <ErrorStateCard
-        title="Unable to Load Environmental Overview"
-        message={error ?? 'Environmental snapshot unavailable.'}
+        title={t.common.errorTitle}
+        message={error ?? t.common.unavailable}
         retryLabel={t.common.retry}
         onRetry={refreshSnapshot}
       />

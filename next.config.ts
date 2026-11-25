@@ -6,6 +6,9 @@ const SECURITY_HEADERS = [
   { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
   { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=(self)' },
   { key: 'X-DNS-Prefetch-Control', value: 'off' },
+  { key: 'X-Permitted-Cross-Domain-Policies', value: 'none' },
+  { key: 'Cross-Origin-Opener-Policy', value: 'same-origin' },
+  { key: 'Origin-Agent-Cluster', value: '?1' },
   {
     key: 'Strict-Transport-Security',
     value: 'max-age=63072000; includeSubDomains; preload',
@@ -27,6 +30,11 @@ const SECURITY_HEADERS = [
   },
 ];
 
+const NO_STORE_API_HEADERS = [
+  { key: 'Cache-Control', value: 'no-store, max-age=0' },
+  { key: 'X-Content-Type-Options', value: 'nosniff' },
+];
+
 const nextConfig: NextConfig = {
   poweredByHeader: false,
   images: {
@@ -37,6 +45,10 @@ const nextConfig: NextConfig = {
       {
         source: '/:path*',
         headers: SECURITY_HEADERS,
+      },
+      {
+        source: '/api/:path*',
+        headers: NO_STORE_API_HEADERS,
       },
     ];
   },

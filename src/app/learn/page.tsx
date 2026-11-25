@@ -1,40 +1,14 @@
 'use client';
 
-import { useMemo, useState } from 'react';
-import { computeCpcbNaqi, POLLUTANT_SPECS } from '@/domain/aqi';
+import { useState } from 'react';
 import { FAQ_ITEMS, GLOSSARY_ITEMS, LEARNING_TOPICS } from '@/domain/pollutants/learningContent';
 import { useEnvironment } from '@/hooks/useEnvironmentContext';
-import { CorePollutantId } from '@/types';
-import { AqiCategoryBadge } from '@/components/ui/AqiCategoryBadge';
+import { CpcbSandboxCalculator } from '@/components/education/CpcbSandboxCalculator';
+import { ParticleScaleDiagram } from '@/components/education/ParticleScaleDiagram';
 
 export default function EnvironmentalLearningPage() {
   const { language, t } = useEnvironment();
   const [tab, setTab] = useState<'topics' | 'calculator' | 'glossary' | 'faq'>('topics');
-
-  const [sandboxVals, setSandboxVals] = useState<Record<CorePollutantId, number>>({
-    pm2_5: 55,
-    pm10: 95,
-    no2: 35,
-    so2: 18,
-    o3: 80,
-    co: 1.1,
-  });
-
-  const sandboxResult = useMemo(() => {
-    return computeCpcbNaqi(
-      (Object.keys(sandboxVals) as CorePollutantId[]).map((pol) => ({
-        pollutant: pol,
-        value: sandboxVals[pol],
-        unit: POLLUTANT_SPECS[pol].standardUnit,
-        hoursSampled: POLLUTANT_SPECS[pol].hoursRequired,
-        hoursRequired: POLLUTANT_SPECS[pol].hoursRequired,
-      })),
-      {
-        sourceName: 'Interactive Educational Sandbox',
-        isRollingWindowAligned: true,
-      }
-    );
-  }, [sandboxVals]);
 
   return (
     <div className="space-y-6">
@@ -45,7 +19,6 @@ export default function EnvironmentalLearningPage() {
         <p className="text-xs text-slate-600">{t.learn.subtitle}</p>
       </div>
 
-      {/* Tabs */}
       <div className="inline-flex flex-wrap rounded-xl p-1 bg-white border border-slate-200 gap-1">
         {(
           [
@@ -71,41 +44,7 @@ export default function EnvironmentalLearningPage() {
 
       {tab === 'topics' && (
         <div className="space-y-5">
-          {/* Interactive Visual Size Comparison Diagram */}
-          <section className="bg-white border border-slate-200 rounded-2xl p-5 space-y-3">
-            <h2 className="text-sm font-bold text-slate-900">{t.learn.particleScaleTitle}</h2>
-            <svg
-              viewBox="0 0 640 130"
-              role="img"
-              aria-label="Scale comparison showing a 70 micrometer human hair next to a 10 micrometer PM10 particle and a 2.5 micrometer PM2.5 particle"
-              className="w-full max-w-2xl h-32"
-            >
-              <circle cx="95" cy="65" r="52" fill="#cbd5e1" stroke="#475569" strokeWidth="2" />
-              <text x="95" y="68" textAnchor="middle" className="fill-slate-900 text-xs font-bold">
-                Hair ~70 µm
-              </text>
-
-              <circle cx="320" cy="65" r="18" fill="#f59e0b" stroke="#92400e" strokeWidth="1.5" />
-              <text
-                x="320"
-                y="108"
-                textAnchor="middle"
-                className="fill-slate-900 text-xs font-bold"
-              >
-                PM₁₀ (≤10 µm)
-              </text>
-
-              <circle cx="515" cy="65" r="6" fill="#dc2626" stroke="#7f1d1d" strokeWidth="1.5" />
-              <text
-                x="515"
-                y="108"
-                textAnchor="middle"
-                className="fill-slate-900 text-xs font-bold"
-              >
-                PM₂.₅ (≤2.5 µm)
-              </text>
-            </svg>
-          </section>
+          <ParticleScaleDiagram title={t.learn.particleScaleTitle} />
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {LEARNING_TOPICS.map((topic) => (
@@ -129,86 +68,7 @@ export default function EnvironmentalLearningPage() {
         </div>
       )}
 
-      {tab === 'calculator' && (
-        <section className="bg-white border border-slate-200 rounded-2xl p-5 space-y-5 text-xs">
-          <div>
-            <h2 className="text-sm font-bold text-slate-900">{t.learn.calcTitle}</h2>
-            <p className="text-slate-600">{t.learn.calcSubtitle}</p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {(
-              [
-                { id: 'pm2_5', min: 0, max: 350, step: 1 },
-                { id: 'pm10', min: 0, max: 500, step: 1 },
-                { id: 'o3', min: 0, max: 400, step: 1 },
-                { id: 'no2', min: 0, max: 450, step: 1 },
-                { id: 'so2', min: 0, max: 1000, step: 5 },
-                { id: 'co', min: 0, max: 35, step: 0.1 },
-              ] as const
-            ).map((cfg) => {
-              const spec = POLLUTANT_SPECS[cfg.id];
-              return (
-                <div
-                  key={cfg.id}
-                  className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-2"
-                >
-                  <div className="flex items-center justify-between">
-                    <label htmlFor={`sandbox-${cfg.id}`} className="font-bold text-slate-900">
-                      {spec.formula} ({spec.averagingPeriod})
-                    </label>
-                    <span className="font-mono font-bold text-teal-900">
-                      {sandboxVals[cfg.id]} {spec.standardUnit} → Sub{' '}
-                      {sandboxResult.subIndices[cfg.id] ?? '--'}
-                    </span>
-                  </div>
-                  <input
-                    id={`sandbox-${cfg.id}`}
-                    type="range"
-                    min={cfg.min}
-                    max={cfg.max}
-                    step={cfg.step}
-                    value={sandboxVals[cfg.id]}
-                    onChange={(e) =>
-                      setSandboxVals((prev) => ({
-                        ...prev,
-                        [cfg.id]: Number(e.target.value),
-                      }))
-                    }
-                    className="w-full accent-teal-700"
-                  />
-                </div>
-              );
-            })}
-          </div>
-
-          <div className="p-4 rounded-xl bg-teal-50 border border-teal-200 flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <p className="font-semibold text-teal-950">Computed CPCB NAQI = max(Sub-Indices)</p>
-              <p className="text-slate-700">
-                Dominant Pollutant:{' '}
-                <strong>
-                  {sandboxResult.dominantPollutant
-                    ? POLLUTANT_SPECS[sandboxResult.dominantPollutant].formula
-                    : '--'}
-                </strong>
-              </p>
-            </div>
-            <div className="flex items-center gap-3">
-              <span className="text-3xl font-black text-slate-900">
-                {sandboxResult.value ?? '--'}
-              </span>
-              <AqiCategoryBadge
-                categoryKey={sandboxResult.categoryKey}
-                localizedLabel={
-                  sandboxResult.categoryKey ? t.categories[sandboxResult.categoryKey] : undefined
-                }
-                size="md"
-              />
-            </div>
-          </div>
-        </section>
-      )}
+      {tab === 'calculator' && <CpcbSandboxCalculator t={t} />}
 
       {tab === 'glossary' && (
         <section className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">

@@ -185,22 +185,54 @@ export function HourlyTrendChart({
             </svg>
           </div>
 
-          {selectedPoint && (
-            <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs flex flex-wrap items-center justify-between gap-2">
-              <span className="font-semibold text-slate-900">
-                {selectedPoint.slot.localTime.replace('T', ' ')} (
-                {selectedPoint.slot.isForecast ? t.common.forecastBadge : t.common.pastModelled})
-              </span>
-              <span className="font-mono text-slate-800">
-                IN NAQI: {selectedPoint.val ?? '--'} • PM₂.₅:{' '}
-                {selectedPoint.slot.measurements.find((m) => m.pollutant === 'pm2_5')?.value ??
-                  '--'}{' '}
-                µg/m³ • O₃:{' '}
-                {selectedPoint.slot.measurements.find((m) => m.pollutant === 'o3')?.value ?? '--'}{' '}
-                µg/m³
-              </span>
+          <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  const nextIdx = selectedIdx === null ? 0 : Math.max(0, selectedIdx - 1);
+                  setSelectedIdx(nextIdx);
+                  const target = slots[nextIdx];
+                  if (target) onSelectSlot?.(target);
+                }}
+                className="px-2.5 py-1 rounded-lg border border-slate-300 bg-slate-50 hover:bg-slate-100 font-semibold text-slate-800 cursor-pointer"
+              >
+                <span aria-hidden="true">← </span>Prev Hour
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const nextIdx =
+                    selectedIdx === null ? 0 : Math.min(slots.length - 1, selectedIdx + 1);
+                  setSelectedIdx(nextIdx);
+                  const target = slots[nextIdx];
+                  if (target) onSelectSlot?.(target);
+                }}
+                className="px-2.5 py-1 rounded-lg border border-slate-300 bg-slate-50 hover:bg-slate-100 font-semibold text-slate-800 cursor-pointer"
+              >
+                Next Hour<span aria-hidden="true"> →</span>
+              </button>
             </div>
-          )}
+            {selectedPoint && (
+              <div
+                role="status"
+                className="flex-1 p-2.5 rounded-xl bg-slate-50 border border-slate-200 flex flex-wrap items-center justify-between gap-2"
+              >
+                <span className="font-semibold text-slate-900">
+                  {selectedPoint.slot.localTime.replace('T', ' ')} (
+                  {selectedPoint.slot.isForecast ? t.common.forecastBadge : t.common.pastModelled})
+                </span>
+                <span className="font-mono text-slate-800">
+                  IN NAQI: {selectedPoint.val ?? '--'} • PM₂.₅:{' '}
+                  {selectedPoint.slot.measurements.find((m) => m.pollutant === 'pm2_5')?.value ??
+                    '--'}{' '}
+                  µg/m³ • O₃:{' '}
+                  {selectedPoint.slot.measurements.find((m) => m.pollutant === 'o3')?.value ?? '--'}{' '}
+                  µg/m³
+                </span>
+              </div>
+            )}
+          </div>
         </div>
       ) : (
         <div

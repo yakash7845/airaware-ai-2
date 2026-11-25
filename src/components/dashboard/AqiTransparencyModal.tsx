@@ -56,7 +56,7 @@ export function AqiTransparencyModal({
         <div
           tabIndex={0}
           role="region"
-          aria-label="CPCB pollutant sub-index breakdown"
+          aria-label={t.live.subIndexAriaLabel}
           className="overflow-x-auto border border-slate-200 rounded-xl"
         >
           <table className="w-full text-left border-collapse">
@@ -96,7 +96,7 @@ export function AqiTransparencyModal({
         </div>
 
         <div className="p-3.5 rounded-xl bg-amber-50 border border-amber-200 space-y-1.5 text-amber-950">
-          <p className="font-bold">Known Limitations &amp; Data Provenance</p>
+          <p className="font-bold">{t.live.limitationsHeading}</p>
           <p>{spatialResolutionNote}</p>
           <ul className="list-disc pl-5 space-y-1">
             {computedAqi.limitations.map((lim, i) => (

@@ -1,90 +1,38 @@
 'use client';
 
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import { z } from 'zod';
 import {
   DEFAULT_FAMILY_PROFILES,
   DEFAULT_LOCATION,
-  PRESET_CITIES,
+  isSameGeoLocation,
 } from '@/lib/configuration/presets';
 import { DEFAULT_INDOOR_SETUP } from '@/domain/recommendations/indoorAdvisor';
 import { getTranslations, AppTranslations } from '@/i18n';
 import {
   AccessibilitySettings,
   AirSnapshot,
-  ApiResponse,
   EnvironmentalInterest,
   FamilyProfile,
   GeoLocation,
   IndoorEnvironmentSetup,
   Language,
 } from '@/types';
+import { fetchApiJson } from '@/utils/apiClient';
+import {
+  AccessibilityStorageSchema,
+  ActiveProfileIdSchema,
+  BooleanSchema,
+  DEFAULT_ACCESSIBILITY,
+  DEFAULT_INTERESTS,
+  DEFAULT_SAVED_LOCATIONS,
+  FamilyProfilesSchema,
+  GeoLocationSchema,
+  IndoorSetupStorageSchema,
+  InterestsSchema,
+  LanguageStorageSchema,
+  SavedLocationsSchema,
+} from './storageSchemas';
 import { useLocalStorageState } from './useLocalStorageState';
-
-const LanguageStorageSchema = z.enum(['en', 'ta', 'hi']);
-
-const AccessibilityStorageSchema = z.object({
-  highContrast: z.boolean(),
-  fontSize: z.enum(['normal', 'large', 'extra-large']),
-  reducedMotion: z.boolean(),
-});
-
-const GeoLocationSchema = z.object({
-  id: z.number(),
-  name: z.string().min(1),
-  latitude: z.number().min(-90).max(90),
-  longitude: z.number().min(-180).max(180),
-  country: z.string(),
-  admin1: z.string().optional(),
-  admin2: z.string().optional(),
-  timezone: z.string(),
-  population: z.number().optional(),
-  countryCode: z.string(),
-});
-
-const FamilyProfilesSchema = z
-  .array(
-    z.object({
-      id: z.string().min(1),
-      name: z.string().min(1).max(60),
-      category: z.enum(['CHILD', 'TEEN', 'ADULT', 'SENIOR', 'GENERAL']),
-      ageRange: z.string(),
-      avatarColor: z.string(),
-      createdAt: z.string(),
-    })
-  )
-  .min(1);
-
-const InterestsSchema = z.array(
-  z.enum(['FAMILY_HEALTH', 'OUTDOOR_SPORTS', 'COMMUTING', 'AIR_SCIENCE', 'URBAN_PLANNING'])
-);
-
-const IndoorSetupStorageSchema = z.object({
-  naturallyVentilated: z.enum(['YES', 'NO', 'PARTIAL']).nullable(),
-  windowsStatus: z.enum(['OPEN', 'CLOSED', 'TIME_DEPENDENT']).nullable(),
-  cookingNearby: z.enum(['YES', 'NO', 'OCCASIONALLY']).nullable(),
-  visibleDustOrSmoke: z.enum(['YES', 'NO', 'SOMETIMES']).nullable(),
-  airPurifierAvailable: z.enum(['YES', 'NO']).nullable(),
-  roadFacingArea: z.enum(['YES', 'NO']).nullable(),
-  updatedAt: z.string().optional(),
-});
-
-const BooleanSchema = z.boolean();
-const SavedLocationsSchema = z.array(GeoLocationSchema).min(1).max(8);
-
-const DEFAULT_ACCESSIBILITY: AccessibilitySettings = {
-  highContrast: false,
-  fontSize: 'normal',
-  reducedMotion: false,
-};
-
-const DEFAULT_SAVED_LOCATIONS: GeoLocation[] = [
-  PRESET_CITIES[0]!,
-  PRESET_CITIES[1]!,
-  PRESET_CITIES[5]!,
-];
-
-const DEFAULT_INTERESTS: EnvironmentalInterest[] = ['FAMILY_HEALTH', 'COMMUTING'];
 
 interface EnvironmentContextValue {
   language: Language;
@@ -150,7 +98,7 @@ export function EnvironmentProvider({ children }: { children: React.ReactNode })
   const [activeProfileId, setActiveProfileId] = useLocalStorageState<string>(
     'airaware2_active_profile',
     DEFAULT_FAMILY_PROFILES[0]!.id,
-    z.string().min(1)
+    ActiveProfileIdSchema
   );
   const [interests, setInterests] = useLocalStorageState<EnvironmentalInterest[]>(
     'airaware2_interests',
@@ -208,16 +156,12 @@ export function EnvironmentProvider({ children }: { children: React.ReactNode })
           timezone: currentLocation.timezone || 'auto',
           ...(force ? { refresh: 'true' } : {}),
         });
-        const res = await fetch(`/api/air?${params.toString()}`, { signal: controller.signal });
-        const json = (await res.json()) as ApiResponse<AirSnapshot>;
+        const data = await fetchApiJson<AirSnapshot>(`/api/air?${params.toString()}`, {
+          signal: controller.signal,
+        });
         if (!mounted) return;
-
-        if (json.success && json.data) {
-          setSnapshot(json.data);
-          setError(null);
-        } else {
-          setError(json.error?.message ?? 'Unable to load verified environmental data.');
-        }
+        setSnapshot(data);
+        setError(null);
       } catch (err: unknown) {
         if (!mounted || (err instanceof Error && err.name === 'AbortError')) return;
         setError(err instanceof Error ? err.message : 'Network error loading environmental data.');
@@ -247,11 +191,7 @@ export function EnvironmentProvider({ children }: { children: React.ReactNode })
 
   const addSavedLocation = useCallback(
     (loc: GeoLocation) => {
-      const exists = savedLocations.some(
-        (item) =>
-          item.name.toLowerCase() === loc.name.toLowerCase() &&
-          Math.abs(item.latitude - loc.latitude) < 0.05
-      );
+      const exists = savedLocations.some((item) => isSameGeoLocation(item, loc));
       if (!exists) {
         setSavedLocations([...savedLocations.slice(0, 7), loc]);
       }

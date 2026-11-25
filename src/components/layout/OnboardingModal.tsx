@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { LocateFixed, ShieldCheck } from 'lucide-react';
-import { PRESET_CITIES } from '@/lib/configuration/presets';
+import { buildFamilyProfile, PRESET_CITIES } from '@/lib/configuration/presets';
 import { useEnvironment } from '@/hooks/useEnvironmentContext';
 import { EnvironmentalInterest, Language, ProfileCategory } from '@/types';
 import { ModalShell } from '../ui/ModalShell';
@@ -39,29 +39,8 @@ export function OnboardingModal() {
   const handleFinish = () => {
     const trimmed = newProfileName.trim();
     if (trimmed.length >= 2) {
-      const ageMap: Record<ProfileCategory, string> = {
-        CHILD: '< 12 yrs',
-        TEEN: '13–17 yrs',
-        ADULT: '18–59 yrs',
-        SENIOR: '60+ yrs',
-        GENERAL: 'All Ages',
-      };
-      const colorMap: Record<ProfileCategory, string> = {
-        CHILD: '#15803d',
-        TEEN: '#0369a1',
-        ADULT: '#4338ca',
-        SENIOR: '#b45309',
-        GENERAL: '#0f766e',
-      };
       const createdId = `prof-onboard-${Date.now()}`;
-      const newProf = {
-        id: createdId,
-        name: trimmed.slice(0, 60),
-        category: newProfileCat,
-        ageRange: ageMap[newProfileCat],
-        avatarColor: colorMap[newProfileCat],
-        createdAt: new Date().toISOString(),
-      };
+      const newProf = buildFamilyProfile(createdId, trimmed, newProfileCat);
       setProfiles([...profiles, newProf]);
       setActiveProfileId(createdId);
       setNewProfileName('');
@@ -190,7 +169,7 @@ export function OnboardingModal() {
                 id="onboard-profile-name"
                 type="text"
                 maxLength={60}
-                placeholder="Optional (e.g. Meera, Dad)"
+                placeholder={t.onboarding.namePlaceholder}
                 value={newProfileName}
                 onChange={(e) => setNewProfileName(e.target.value)}
                 className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-slate-50 text-slate-900"

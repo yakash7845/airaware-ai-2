@@ -8,10 +8,12 @@ AirAware AI 2.0 is built around four strict invariants:
 2. **Server-Side Environmental Grounding:** All conversational and explanation endpoints (`/api/explain`, `/api/best-window`, `/api/indoor-advisor`, `/api/chat`) resolve environmental snapshots server-side from cached Open-Meteo providers by validated coordinates rather than trusting mutable client snapshot payloads.
 3. **Scientific Provenance & Honest Limitations:** Atmospheric model values (Copernicus CAMS via Open-Meteo) are explicitly tagged as `MODEL_ESTIMATE` / `PAST_MODELLED` / `FORECAST`, never misrepresented as physical street-level monitoring stations or indoor sensors.
 4. **Full Separation of Layers:**
-   - `src/domain/`: Pure, side-effect-free TypeScript domain engines (`aqi/`, `pollutants/`, `analytics/`, `personalization/`, `recommendations/`).
-   - `src/services/`: External integrations, Zod response validation, retries, deduplication, TTL cache, and Gemini structured orchestration.
-   - `src/lib/`: Environment configuration (`env.ts`), error hierarchy (`appError.ts`), safe logging (`logger.ts`), rate limiting (`rateLimit.ts`), prompt injection guards (`promptGuard.ts`), Zod request validation (`apiSchemas.ts`), and timezone offset parsing (`timezone.ts`).
-   - `src/i18n/`: Complete localization dictionaries (`en.ts`, `ta.ts`, `hi.ts`).
+   - `src/domain/`: Pure, side-effect-free TypeScript domain engines (`aqi/`, `pollutants/`, `analytics/`, `personalization/`, `recommendations/`), cleanly decomposed with shared helpers and template modules.
+   - `src/services/`: External integrations, Zod response validation, retries, deduplication (`http/fetchJson.ts`), bounded LRU+TTL caching (`caching/ttlCache.ts`), snapshot normalization (`environment/`), and Gemini structured orchestration + deterministic fallback (`gemini/`).
+   - `src/lib/`: Environment configuration (`env.ts`, `presets.ts`), error hierarchy (`appError.ts`), safe logging (`logger.ts`), rate limiting (`rateLimit.ts`), prompt injection guards (`promptGuard.ts`), Zod request validation (`apiSchemas.ts`), and timezone offset parsing (`timezone.ts`).
+   - `src/utils/` & `src/hooks/`: Shared typed API client (`apiClient.ts`), localStorage Zod schemas (`storageSchemas.ts`), and central `EnvironmentProvider`.
+   - `src/components/`: Feature-modularized accessible UI components (`assistant/`, `charts/`, `dashboard/`, `education/`, `forecasts/`, `indoor/`, `layout/`, `maps/`, `planner/`, `profiles/`, `ui/`).
+   - `src/i18n/`: Full localization dictionaries (`en.ts`, `ta.ts`, `hi.ts`) covering all 10 routes, tables, modals, and controls.
    - `src/app/`: 10 Next.js App Router pages + 9 hardened REST route handlers.
 
 ## 2. Data & AI Pipeline

@@ -4,7 +4,8 @@ import React, { useEffect, useRef, useState } from 'react';
 import { LocateFixed, MapPin, RefreshCw, Search } from 'lucide-react';
 import { PRESET_CITIES } from '@/lib/configuration/presets';
 import { useEnvironment } from '@/hooks/useEnvironmentContext';
-import { ApiResponse, GeoLocation } from '@/types';
+import { GeoLocation } from '@/types';
+import { fetchApiJson } from '@/utils/apiClient';
 
 export function LocationSearchBar() {
   const {
@@ -44,22 +45,16 @@ export function LocationSearchBar() {
       setIsSearching(true);
       setSearchError(null);
       try {
-        const res = await fetch(`/api/location?q=${encodeURIComponent(trimmed)}`, {
-          signal: controller.signal,
-        });
-        const json = (await res.json()) as ApiResponse<GeoLocation[]>;
-        if (json.success && Array.isArray(json.data)) {
-          setResults(json.data);
-          setActiveIndex(json.data.length > 0 ? 0 : -1);
-          setIsOpen(true);
-        } else {
-          setResults([]);
-          setSearchError(json.error?.message ?? 'Search failed');
-          setIsOpen(true);
-        }
+        const locations = await fetchApiJson<GeoLocation[]>(
+          `/api/location?q=${encodeURIComponent(trimmed)}`,
+          { signal: controller.signal }
+        );
+        setResults(locations);
+        setActiveIndex(locations.length > 0 ? 0 : -1);
+        setIsOpen(true);
       } catch (err: unknown) {
         if (err instanceof Error && err.name === 'AbortError') return;
-        setSearchError('Unable to reach geocoding service.');
+        setSearchError(err instanceof Error ? err.message : 'Unable to reach geocoding service.');
         setResults([]);
         setIsOpen(true);
       } finally {
@@ -144,6 +139,7 @@ export function LocationSearchBar() {
               type="text"
               role="combobox"
               aria-label={t.common.searchPlaceholder}
+              aria-haspopup="listbox"
               aria-expanded={isOpen}
               aria-controls="location-search-listbox"
               aria-autocomplete="list"
@@ -172,6 +168,9 @@ export function LocationSearchBar() {
               />
             )}
 
+            <span className="sr-only" role="status" aria-live="polite">
+              {isOpen ? `${results.length} location matches available` : ''}
+            </span>
             {isOpen && (
               <div
                 id="location-search-listbox"

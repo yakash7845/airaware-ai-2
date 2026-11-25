@@ -1,23 +1,22 @@
 import { z } from 'zod';
 
+const HttpsUrlSchema = z
+  .string()
+  .url()
+  .refine((u) => u.startsWith('https://'), 'Upstream provider endpoints must use HTTPS.');
+
 const EnvSchema = z.object({
   GEMINI_API_KEY: z.string().optional().default(''),
   GEMINI_MODEL: z.string().min(1).optional().default('gemini-2.0-flash'),
-  OPEN_METEO_AIR_URL: z
-    .string()
-    .url()
-    .optional()
-    .default('https://air-quality-api.open-meteo.com/v1/air-quality'),
-  OPEN_METEO_WEATHER_URL: z
-    .string()
-    .url()
-    .optional()
-    .default('https://api.open-meteo.com/v1/forecast'),
-  OPEN_METEO_GEO_URL: z
-    .string()
-    .url()
-    .optional()
-    .default('https://geocoding-api.open-meteo.com/v1/search'),
+  OPEN_METEO_AIR_URL: HttpsUrlSchema.optional().default(
+    'https://air-quality-api.open-meteo.com/v1/air-quality'
+  ),
+  OPEN_METEO_WEATHER_URL: HttpsUrlSchema.optional().default(
+    'https://api.open-meteo.com/v1/forecast'
+  ),
+  OPEN_METEO_GEO_URL: HttpsUrlSchema.optional().default(
+    'https://geocoding-api.open-meteo.com/v1/search'
+  ),
   AIR_QUALITY_CACHE_TTL_MS: z.coerce.number().int().positive().optional().default(600_000),
   WEATHER_CACHE_TTL_MS: z.coerce.number().int().positive().optional().default(900_000),
   GEOCODING_CACHE_TTL_MS: z.coerce.number().int().positive().optional().default(86_400_000),

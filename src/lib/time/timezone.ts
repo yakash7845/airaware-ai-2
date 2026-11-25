@@ -3,6 +3,12 @@ import { DataSourceKind, FreshnessStatus } from '@/types';
 
 const NAIVE_ISO_RE = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2}))?$/;
 
+export interface ParsedLocalTimestamp {
+  utcIso: string;
+  epochMs: number;
+  localTime: string;
+}
+
 /**
  * Convert an Open-Meteo naive local timestamp (e.g. "2026-11-25T14:00") using its
  * explicit utc_offset_seconds into an unambiguous UTC epoch and ISO-8601 string.
@@ -11,7 +17,7 @@ const NAIVE_ISO_RE = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2}))?$/;
 export function parseOpenMeteoLocalTime(
   localTimeStr: string,
   utcOffsetSeconds: number
-): { utcIso: string; epochMs: number; localTime: string } {
+): ParsedLocalTimestamp {
   const trimmed = localTimeStr.trim();
   const match = NAIVE_ISO_RE.exec(trimmed);
 

@@ -15,7 +15,7 @@ const ROUTES = [
 ];
 
 test.describe('AirAware AI 2.0 End-to-End & WCAG Accessibility Suite', () => {
-  test('renders all 10 routes cleanly and passes automated axe checks on core views', async ({
+  test('renders all 10 routes cleanly and passes automated axe checks across every page', async ({
     page,
   }) => {
     for (const route of ROUTES) {
@@ -23,23 +23,11 @@ test.describe('AirAware AI 2.0 End-to-End & WCAG Accessibility Suite', () => {
       await expect(page.getByRole('heading', { name: route.heading }).first()).toBeVisible({
         timeout: 20_000,
       });
+      // Wait briefly for initial snapshot hydration before auditing DOM contrast/landmarks
+      await page.waitForTimeout(300);
+      const axeResults = await new AxeBuilder({ page }).analyze();
+      expect(axeResults.violations, `Axe violations on ${route.path}`).toEqual([]);
     }
-
-    await page.goto('/');
-    await expect(page.getByText(/IN NAQI/i).first()).toBeVisible({ timeout: 20_000 });
-    const homeAxe = await new AxeBuilder({ page }).analyze();
-    expect(homeAxe.violations).toEqual([]);
-
-    await page.goto('/live');
-    await expect(page.getByRole('heading', { name: /Live Air Quality/i })).toBeVisible({
-      timeout: 20_000,
-    });
-    const liveAxe = await new AxeBuilder({ page }).analyze();
-    expect(liveAxe.violations).toEqual([]);
-
-    await page.goto('/assistant');
-    const assistantAxe = await new AxeBuilder({ page }).analyze();
-    expect(assistantAxe.violations).toEqual([]);
   });
 
   test('supports onboarding, location switching, and full EN/TA/HI localization', async ({
@@ -77,7 +65,7 @@ test.describe('AirAware AI 2.0 End-to-End & WCAG Accessibility Suite', () => {
     ).toBeVisible();
   });
 
-  test('verifies Explore comparison, Exposure profiles, Outdoor Planner, Indoor Advisor, AI Assistant, and Learn Calculator', async ({
+  test('verifies Explore, Exposure CRUD, Planner, Indoor, Assistant, Learn, and Settings accessibility controls', async ({
     page,
   }) => {
     // Explore comparison
@@ -87,11 +75,15 @@ test.describe('AirAware AI 2.0 End-to-End & WCAG Accessibility Suite', () => {
     });
     await expect(page.getByRole('table')).toBeVisible({ timeout: 20_000 });
 
-    // Personal Exposure profiles + invariance
+    // Personal Exposure profiles + Add Profile CRUD
     await page.goto('/exposure');
     await expect(page.getByText(/Environmental Invariance Verified/i)).toBeVisible({
       timeout: 20_000,
     });
+    await page.getByRole('button', { name: /Add Profile/i }).click();
+    await page.getByLabel(/Display Name/i).fill('Ananya');
+    await page.getByRole('button', { name: /^Save$/i }).click();
+    await expect(page.getByText('Ananya')).toBeVisible();
 
     // Outdoor Planner
     await page.goto('/planner');
@@ -113,6 +105,13 @@ test.describe('AirAware AI 2.0 End-to-End & WCAG Accessibility Suite', () => {
     await page.goto('/learn');
     await page.getByRole('button', { name: /Interactive CPCB Calculator/i }).click();
     await expect(page.getByText(/Computed CPCB NAQI = max\(Sub-Indices\)/i)).toBeVisible();
+
+    // Settings high-contrast & text size scaling
+    await page.goto('/settings');
+    await page.getByRole('button', { name: /Large \(112%\)/i }).click();
+    await expect(page.locator('html')).toHaveAttribute('data-text-size', 'large');
+    await page.getByRole('button', { name: /High-Contrast Accessible Theme/i }).click();
+    await expect(page.locator('html')).toHaveAttribute('data-contrast', 'high');
   });
 
   test('supports mobile navigation drawer without horizontal overflow', async ({

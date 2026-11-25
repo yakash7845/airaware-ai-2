@@ -1,34 +1,14 @@
 'use client';
 
 import { useState } from 'react';
-import { RefreshCw, Send, Sparkles, Trash2 } from 'lucide-react';
+import { RefreshCw, Send, Trash2 } from 'lucide-react';
 import { PRESET_CITIES } from '@/lib/configuration/presets';
 import { useEnvironment } from '@/hooks/useEnvironmentContext';
-import { ApiResponse, ChatMessage, Language } from '@/types';
+import { ChatMessage } from '@/types';
+import { postApiJson } from '@/utils/apiClient';
+import { AssistantControls } from '@/components/assistant/AssistantControls';
+import { AssistantMessageCard } from '@/components/assistant/AssistantMessageCard';
 import { ErrorStateCard, LoadingStateCard } from '@/components/ui/StateCards';
-
-const SUGGESTED_PROMPTS: Record<Language, string[]> = {
-  en: [
-    'What is the current AQI in my location and why is it at this level?',
-    'Explain PM2.5 in simple language.',
-    'Compare my location with Coimbatore.',
-    'What does the 24-hour forecast indicate?',
-    'Explain the difference between observed and modelled pollution data.',
-    'Summarize conditions and practical steps for my household.',
-  ],
-  ta: [
-    'என் இடத்தின் இன்றைய AQI மற்றும் முக்கிய மாசு என்ன?',
-    'PM2.5 என்றால் என்ன? எளிய தமிழில் விளக்குங்கள்.',
-    'அடுத்த 24 மணி நேர முன்னறிவிப்பு என்ன சொல்கிறது?',
-    'நேரடி சென்சார் தரவிற்கும் மாதிரி தரவிற்கும் என்ன வித்தியாசம்?',
-  ],
-  hi: [
-    'मेरे स्थान का वर्तमान AQI क्या है और इसका मुख्य कारण क्या है?',
-    'PM2.5 को सरल शब्दों में समझाएं।',
-    'आगामी 24 घंटे का पूर्वानुमान क्या दर्शाता है?',
-    'मेरे परिवार के लिए आज के व्यावहारिक सुझाव बताएं।',
-  ],
-};
 
 export default function AssistantPage() {
   const {
@@ -55,8 +35,8 @@ export default function AssistantPage() {
   if (error || !snapshot) {
     return (
       <ErrorStateCard
-        title="Unable to Initialize AI Assistant"
-        message={error ?? 'Environmental context unavailable.'}
+        title={t.common.errorTitle}
+        message={error ?? t.common.unavailable}
         retryLabel={t.common.retry}
         onRetry={refreshSnapshot}
       />
@@ -88,38 +68,31 @@ export default function AssistantPage() {
     );
 
     try {
-      const res = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          message: trimmed,
-          lat: currentLocation.latitude,
-          lon: currentLocation.longitude,
-          locationName: currentLocation.name,
-          timezone: currentLocation.timezone || 'auto',
-          compareLocations: compareCity
-            ? [
-                {
-                  name: compareCity.name,
-                  lat: compareCity.latitude,
-                  lon: compareCity.longitude,
-                  timezone: compareCity.timezone,
-                },
-              ]
-            : [],
-          profileCategory: activeProfile.category,
-          language,
-          history: baseHistory.slice(-6).map((m) => ({ role: m.role, content: m.content })),
-        }),
+      const reply = await postApiJson<Record<string, unknown>, ChatMessage>('/api/chat', {
+        message: trimmed,
+        lat: currentLocation.latitude,
+        lon: currentLocation.longitude,
+        locationName: currentLocation.name,
+        timezone: currentLocation.timezone || 'auto',
+        compareLocations: compareCity
+          ? [
+              {
+                name: compareCity.name,
+                lat: compareCity.latitude,
+                lon: compareCity.longitude,
+                timezone: compareCity.timezone,
+              },
+            ]
+          : [],
+        profileCategory: activeProfile.category,
+        language,
+        history: baseHistory.slice(-6).map((m) => ({ role: m.role, content: m.content })),
       });
-      const json = (await res.json()) as ApiResponse<ChatMessage>;
-      if (json.success && json.data) {
-        setMessages((prev) => [...prev, json.data!]);
-      } else {
-        setChatError(json.error?.message ?? 'Assistant request failed.');
-      }
-    } catch {
-      setChatError('Network error contacting assistant endpoint.');
+      setMessages((prev) => [...prev, reply]);
+    } catch (err: unknown) {
+      setChatError(
+        err instanceof Error ? err.message : 'Network error contacting assistant endpoint.'
+      );
     } finally {
       setIsSending(false);
     }
@@ -130,8 +103,7 @@ export default function AssistantPage() {
     if (lastUserIdx === -1) return;
     const actualIdx = messages.length - 1 - lastUserIdx;
     const lastUser = messages[actualIdx];
-    if (!lastUser) return;
-    sendMessage(lastUser.content, messages.slice(0, actualIdx));
+    if (lastUser) sendMessage(lastUser.content, messages.slice(0, actualIdx));
   };
 
   return (
@@ -169,59 +141,19 @@ export default function AssistantPage() {
         </div>
       </div>
 
-      {/* Context Controls */}
-      <section className="bg-white border border-slate-200 rounded-2xl p-4 flex flex-wrap items-center justify-between gap-3 text-xs">
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="px-2.5 py-1 rounded-full bg-teal-50 border border-teal-200 text-teal-900 font-semibold">
-            {currentLocation.name}: {snapshot.computedAqi.value ?? '--'} IN NAQI
-          </span>
-          <span className="px-2.5 py-1 rounded-full bg-slate-100 text-slate-800 font-semibold">
-            {activeProfile.name} ({activeProfile.category})
-          </span>
-        </div>
+      <AssistantControls
+        locationName={currentLocation.name}
+        aqiValue={snapshot.computedAqi.value}
+        profileName={activeProfile.name}
+        profileCategory={activeProfile.category}
+        compareCityName={compareCityName}
+        language={language}
+        isSending={isSending}
+        t={t}
+        onCompareCityChange={setCompareCityName}
+        onSelectPrompt={(q) => sendMessage(q)}
+      />
 
-        <div className="flex items-center gap-2">
-          <label htmlFor="assistant-compare-city" className="text-slate-600 font-medium">
-            {t.assistant.compareWithLabel}:
-          </label>
-          <select
-            id="assistant-compare-city"
-            value={compareCityName}
-            onChange={(e) => setCompareCityName(e.target.value)}
-            className="px-2.5 py-1 rounded-lg border border-slate-300 bg-slate-50 text-slate-900"
-          >
-            <option value="">None</option>
-            {PRESET_CITIES.map((c) => (
-              <option key={c.id} value={c.name}>
-                {c.name}
-              </option>
-            ))}
-          </select>
-        </div>
-      </section>
-
-      {/* Suggested Prompts */}
-      <section className="space-y-2">
-        <p className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
-          <Sparkles className="w-3.5 h-3.5 text-teal-700" aria-hidden="true" />
-          <span>{t.assistant.suggestedTitle}</span>
-        </p>
-        <div className="flex flex-wrap gap-2">
-          {SUGGESTED_PROMPTS[language].map((q) => (
-            <button
-              key={q}
-              type="button"
-              disabled={isSending}
-              onClick={() => sendMessage(q)}
-              className="px-3 py-1.5 rounded-xl border border-slate-200 bg-white hover:border-teal-600 text-xs text-slate-800 text-left disabled:opacity-50 cursor-pointer"
-            >
-              {q}
-            </button>
-          ))}
-        </div>
-      </section>
-
-      {/* Conversation Log */}
       <section
         tabIndex={0}
         role="log"
@@ -235,92 +167,15 @@ export default function AssistantPage() {
             <p className="max-w-lg mx-auto">{t.assistant.emptySubtitle}</p>
           </div>
         ) : (
-          messages.map((m) => {
-            if (m.role === 'user') {
-              return (
-                <div key={m.id} className="flex justify-end">
-                  <div className="max-w-[85%] rounded-2xl px-4 py-2.5 bg-teal-700 text-white text-xs">
-                    {m.content}
-                  </div>
-                </div>
-              );
-            }
-
-            const s = m.structured;
-            return (
-              <div key={m.id} className="flex justify-start">
-                <div className="max-w-[95%] w-full rounded-2xl border border-slate-200 bg-slate-50 p-4 space-y-3 text-xs">
-                  <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 pb-2">
-                    <span className="font-bold text-slate-900">{s?.summary ?? 'Response'}</span>
-                    <span
-                      className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                        s?.engineMode === 'GEMINI_GROUNDED'
-                          ? 'bg-sky-100 text-sky-900'
-                          : 'bg-slate-200 text-slate-800'
-                      }`}
-                    >
-                      {s?.engineMode === 'GEMINI_GROUNDED'
-                        ? t.assistant.modeAi
-                        : t.assistant.modeFallback}
-                    </span>
-                  </div>
-
-                  <p className="text-slate-900 leading-relaxed">{m.content}</p>
-
-                  {s && s.relevantPollutants.length > 0 && (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                      {s.relevantPollutants.map((rp, i) => (
-                        <div key={i} className="p-2.5 rounded-xl bg-white border border-slate-200">
-                          <p className="font-bold text-slate-900">
-                            {rp.pollutant}: {rp.value}
-                          </p>
-                          <p className="text-[11px] text-slate-600">{rp.interpretation}</p>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  {s && s.practicalGuidance.length > 0 && (
-                    <div>
-                      <p className="font-bold text-slate-900 mb-1">{t.assistant.guidanceLabel}</p>
-                      <ul className="list-disc pl-5 text-slate-700 space-y-0.5">
-                        {s.practicalGuidance.map((g, i) => (
-                          <li key={i}>{g}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-
-                  {s && (
-                    <div className="pt-2 border-t border-slate-200 space-y-1 text-[11px] text-slate-600">
-                      <p>
-                        <strong>{t.assistant.uncertaintyLabel}:</strong> {s.uncertainty}
-                      </p>
-                      <p>
-                        <strong>{t.assistant.sourcesLabel}:</strong> {s.sources.join(' • ')}
-                      </p>
-                    </div>
-                  )}
-
-                  {s && s.followUpQuestions.length > 0 && (
-                    <div className="pt-2 flex flex-wrap gap-1.5">
-                      {s.followUpQuestions.map((fq) => (
-                        <button
-                          key={fq}
-                          type="button"
-                          onClick={() => sendMessage(fq)}
-                          disabled={isSending}
-                          className="px-2.5 py-1 rounded-lg bg-white border border-slate-300 hover:border-teal-600 text-[11px] text-slate-800 cursor-pointer"
-                        >
-                          {fq}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-            );
-          })
+          messages.map((m) => (
+            <AssistantMessageCard
+              key={m.id}
+              message={m}
+              isSending={isSending}
+              t={t}
+              onFollowUp={(fq) => sendMessage(fq)}
+            />
+          ))
         )}
         {isSending && (
           <p role="status" className="text-xs text-teal-800 font-semibold">
@@ -338,7 +193,6 @@ export default function AssistantPage() {
         </p>
       )}
 
-      {/* Input Bar */}
       <form
         onSubmit={(e) => {
           e.preventDefault();

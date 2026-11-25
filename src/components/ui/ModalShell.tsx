@@ -22,6 +22,15 @@ const FOCUSABLE_SELECTOR = [
   '[tabindex]:not([tabindex="-1"])',
 ].join(', ');
 
+function isElementVisibleForFocus(el: HTMLElement): boolean {
+  if (el.hasAttribute('hidden') || el.getAttribute('aria-hidden') === 'true') {
+    return false;
+  }
+  const style = window.getComputedStyle(el);
+  return style.display !== 'none' && style.visibility !== 'hidden';
+}
+
+/** Accessible modal dialog shell with focus trapping, Escape dismissal, and aria-describedby support. */
 export function ModalShell({
   isOpen,
   onClose,
@@ -51,16 +60,22 @@ export function ModalShell({
       if (event.key === 'Tab' && dialogRef.current) {
         const focusables = Array.from(
           dialogRef.current.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)
-        ).filter((el) => el.offsetParent !== null);
+        ).filter(isElementVisibleForFocus);
 
         if (focusables.length === 0) return;
         const first = focusables[0]!;
         const last = focusables[focusables.length - 1]!;
 
-        if (event.shiftKey && document.activeElement === first) {
+        if (
+          event.shiftKey &&
+          (document.activeElement === first || !dialogRef.current.contains(document.activeElement))
+        ) {
           event.preventDefault();
           last.focus();
-        } else if (!event.shiftKey && document.activeElement === last) {
+        } else if (
+          !event.shiftKey &&
+          (document.activeElement === last || !dialogRef.current.contains(document.activeElement))
+        ) {
           event.preventDefault();
           first.focus();
         }
@@ -76,11 +91,14 @@ export function ModalShell({
 
   if (!isOpen) return null;
 
+  const subtitleId = subtitle ? `${titleId}-subtitle` : undefined;
+
   return (
     <div
       role="dialog"
       aria-modal="true"
       aria-labelledby={titleId}
+      aria-describedby={subtitleId}
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
@@ -95,7 +113,11 @@ export function ModalShell({
             <h2 id={titleId} className="text-lg font-bold text-slate-900 tracking-tight">
               {title}
             </h2>
-            {subtitle && <p className="text-xs text-slate-600 mt-0.5">{subtitle}</p>}
+            {subtitle && (
+              <p id={subtitleId} className="text-xs text-slate-600 mt-0.5">
+                {subtitle}
+              </p>
+            )}
           </div>
 
           <button

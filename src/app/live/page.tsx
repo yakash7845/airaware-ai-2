@@ -22,8 +22,8 @@ export default function LiveAirQualityPage() {
   if (error || !snapshot) {
     return (
       <ErrorStateCard
-        title="Unable to Load Live Air Quality"
-        message={error ?? 'Snapshot unavailable.'}
+        title={t.common.errorTitle}
+        message={error ?? t.common.unavailable}
         retryLabel={t.common.retry}
         onRetry={refreshSnapshot}
       />
@@ -126,7 +126,7 @@ export default function LiveAirQualityPage() {
         <h2 className="text-sm font-bold text-slate-900">{t.live.supplementaryTitle}</h2>
         <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 text-xs">
           <div className="p-3 rounded-xl bg-slate-50 border border-slate-200">
-            <p className="text-slate-600">Mineral Dust</p>
+            <p className="text-slate-600">{t.live.supplementaryLabels.dust}</p>
             <p className="font-bold text-slate-900 mt-0.5">
               {snapshot.supplementary.dustUgM3 !== null &&
               snapshot.supplementary.dustUgM3 !== undefined
@@ -135,25 +135,25 @@ export default function LiveAirQualityPage() {
             </p>
           </div>
           <div className="p-3 rounded-xl bg-slate-50 border border-slate-200">
-            <p className="text-slate-600">Aerosol Optical Depth</p>
+            <p className="text-slate-600">{t.live.supplementaryLabels.aod}</p>
             <p className="font-bold text-slate-900 mt-0.5">
               {snapshot.supplementary.aerosolOpticalDepth ?? t.common.unavailable}
             </p>
           </div>
           <div className="p-3 rounded-xl bg-slate-50 border border-slate-200">
-            <p className="text-slate-600">UV Index</p>
+            <p className="text-slate-600">{t.live.supplementaryLabels.uv}</p>
             <p className="font-bold text-slate-900 mt-0.5">
               {snapshot.supplementary.uvIndex ?? t.common.unavailable}
             </p>
           </div>
           <div className="p-3 rounded-xl bg-slate-50 border border-slate-200">
-            <p className="text-slate-600">Provider US AQI (Ref)</p>
+            <p className="text-slate-600">{t.live.supplementaryLabels.usAqiRef}</p>
             <p className="font-bold text-slate-900 mt-0.5">
               {snapshot.supplementary.openMeteoUsAqi ?? t.common.unavailable}
             </p>
           </div>
           <div className="p-3 rounded-xl bg-slate-50 border border-slate-200">
-            <p className="text-slate-600">Provider EU AQI (Ref)</p>
+            <p className="text-slate-600">{t.live.supplementaryLabels.euAqiRef}</p>
             <p className="font-bold text-slate-900 mt-0.5">
               {snapshot.supplementary.openMeteoEuropeanAqi ?? t.common.unavailable}
             </p>

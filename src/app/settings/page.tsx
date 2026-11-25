@@ -35,7 +35,7 @@ export default function SettingsPage() {
     link.href = url;
     link.download = 'airaware-2-preferences.json';
     link.click();
-    URL.revokeObjectURL(url);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
   };
 
   return (
@@ -113,7 +113,8 @@ export default function SettingsPage() {
                 : 'bg-slate-50 text-slate-800 border-slate-300'
             }`}
           >
-            {t.settings.highContrastLabel}: {accessibility.highContrast ? 'ON' : 'OFF'}
+            {t.settings.highContrastLabel}:{' '}
+            {accessibility.highContrast ? t.common.onLabel : t.common.offLabel}
           </button>
 
           <button
@@ -128,7 +129,8 @@ export default function SettingsPage() {
                 : 'bg-slate-50 text-slate-800 border-slate-300'
             }`}
           >
-            {t.settings.reducedMotionLabel}: {accessibility.reducedMotion ? 'ON' : 'OFF'}
+            {t.settings.reducedMotionLabel}:{' '}
+            {accessibility.reducedMotion ? t.common.onLabel : t.common.offLabel}
           </button>
         </div>
       </section>

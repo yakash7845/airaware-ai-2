@@ -92,13 +92,23 @@ if (process.env.NODE_ENV !== 'production') {
   globalLimiter.__airaware_rate_limiter__ = rateLimiter;
 }
 
+const SAFE_IP_RE = /^[0-9a-fA-F.:]+$/;
+
+/**
+ * Extract a sanitized client IP identifier from trusted proxy headers without
+ * allowing arbitrary key-injection characters into rate-limiter buckets.
+ */
 export function extractClientIdentifier(headers: Headers): string {
+  const realIp = headers.get('x-real-ip')?.trim();
+  if (realIp && SAFE_IP_RE.test(realIp)) {
+    return realIp.slice(0, 64);
+  }
   const forwarded = headers.get('x-forwarded-for');
   if (forwarded) {
     const firstIp = forwarded.split(',')[0]?.trim();
-    if (firstIp) return firstIp.slice(0, 64);
+    if (firstIp && SAFE_IP_RE.test(firstIp)) {
+      return firstIp.slice(0, 64);
+    }
   }
-  const realIp = headers.get('x-real-ip')?.trim();
-  if (realIp) return realIp.slice(0, 64);
   return 'local-client';
 }

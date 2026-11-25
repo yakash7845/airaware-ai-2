@@ -171,10 +171,19 @@ export function parseStrictCoordinatesQuery(searchParams: URLSearchParams) {
   return parsed.data;
 }
 
+/**
+ * Enforce JSON Content-Type (when header is present), bounded body size, JSON parsing,
+ * and Zod schema validation on incoming POST endpoints.
+ */
 export async function parseValidatedJsonBody<T extends z.ZodTypeAny>(
   request: NextRequest,
   schema: T
 ): Promise<z.infer<T>> {
+  const contentType = request.headers.get('content-type');
+  if (contentType && !contentType.toLowerCase().includes('application/json')) {
+    throw new RequestValidationError('Content-Type header must be application/json.');
+  }
+
   const contentLengthHeader = request.headers.get('content-length');
   if (contentLengthHeader) {
     const len = Number(contentLengthHeader);

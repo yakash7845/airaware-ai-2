@@ -1,4 +1,42 @@
-import { FamilyProfile, GeoLocation } from '@/types';
+import { FamilyProfile, GeoLocation, ProfileCategory } from '@/types';
+
+export const PROFILE_CATEGORY_DEFAULTS: Record<
+  ProfileCategory,
+  { ageRange: string; avatarColor: string }
+> = {
+  CHILD: { ageRange: '< 12 yrs', avatarColor: '#15803d' },
+  TEEN: { ageRange: '13–17 yrs', avatarColor: '#0369a1' },
+  ADULT: { ageRange: '18–59 yrs', avatarColor: '#4338ca' },
+  SENIOR: { ageRange: '60+ yrs', avatarColor: '#b45309' },
+  GENERAL: { ageRange: 'All Ages', avatarColor: '#0f766e' },
+};
+
+/** Create a normalized FamilyProfile record using centralized category defaults. */
+export function buildFamilyProfile(
+  id: string,
+  name: string,
+  category: ProfileCategory,
+  createdAt: string = new Date().toISOString()
+): FamilyProfile {
+  const defaults = PROFILE_CATEGORY_DEFAULTS[category];
+  return {
+    id,
+    name: name.trim().slice(0, 60),
+    category,
+    ageRange: defaults.ageRange,
+    avatarColor: defaults.avatarColor,
+    createdAt,
+  };
+}
+
+/** Compare two GeoLocation records by normalized name and approximate coordinates. */
+export function isSameGeoLocation(a: GeoLocation, b: GeoLocation): boolean {
+  return (
+    a.name.toLowerCase() === b.name.toLowerCase() &&
+    Math.abs(a.latitude - b.latitude) < 0.05 &&
+    Math.abs(a.longitude - b.longitude) < 0.05
+  );
+}
 
 export const DEFAULT_LOCATION: GeoLocation = {
   id: 1264527,
@@ -86,44 +124,14 @@ export const PRESET_CITIES: readonly GeoLocation[] = [
 ];
 
 export const DEFAULT_FAMILY_PROFILES: readonly FamilyProfile[] = [
-  {
-    id: 'profile-general',
-    name: 'Household Baseline',
-    category: 'GENERAL',
-    ageRange: 'All Ages',
-    avatarColor: '#0f766e',
-    createdAt: '2026-01-01T00:00:00.000Z',
-  },
-  {
-    id: 'profile-child',
-    name: 'Aarav',
-    category: 'CHILD',
-    ageRange: 'Under 12 yrs',
-    avatarColor: '#15803d',
-    createdAt: '2026-01-01T00:00:00.000Z',
-  },
-  {
-    id: 'profile-teen',
-    name: 'Diya',
-    category: 'TEEN',
-    ageRange: '13–17 yrs',
-    avatarColor: '#0369a1',
-    createdAt: '2026-01-01T00:00:00.000Z',
-  },
-  {
-    id: 'profile-adult',
-    name: 'Karthik',
-    category: 'ADULT',
-    ageRange: '18–59 yrs',
-    avatarColor: '#4338ca',
-    createdAt: '2026-01-01T00:00:00.000Z',
-  },
-  {
-    id: 'profile-senior',
-    name: 'Lakshmi',
-    category: 'SENIOR',
-    ageRange: '60+ yrs',
-    avatarColor: '#b45309',
-    createdAt: '2026-01-01T00:00:00.000Z',
-  },
+  buildFamilyProfile(
+    'profile-general',
+    'Household Baseline',
+    'GENERAL',
+    '2026-01-01T00:00:00.000Z'
+  ),
+  buildFamilyProfile('profile-child', 'Aarav', 'CHILD', '2026-01-01T00:00:00.000Z'),
+  buildFamilyProfile('profile-teen', 'Diya', 'TEEN', '2026-01-01T00:00:00.000Z'),
+  buildFamilyProfile('profile-adult', 'Karthik', 'ADULT', '2026-01-01T00:00:00.000Z'),
+  buildFamilyProfile('profile-senior', 'Lakshmi', 'SENIOR', '2026-01-01T00:00:00.000Z'),
 ];

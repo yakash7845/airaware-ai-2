@@ -56,6 +56,9 @@ export interface AppTranslations {
     reset: string;
     exportData: string;
     quickCities: string;
+    errorTitle: string;
+    onLabel: string;
+    offLabel: string;
   };
   categories: Record<CpcbCategoryKey, string>;
   weatherConditions: Record<WeatherConditionKey, string>;
@@ -90,6 +93,7 @@ export interface AppTranslations {
     completeBtn: string;
     skipBtn: string;
     reopenBtn: string;
+    namePlaceholder: string;
   };
   overview: {
     title: string;
@@ -122,6 +126,15 @@ export interface AppTranslations {
     cpcbLimitLabel: string;
     whoLimitLabel: string;
     inspectMethodology: string;
+    limitationsHeading: string;
+    subIndexAriaLabel: string;
+    supplementaryLabels: {
+      dust: string;
+      aod: string;
+      uv: string;
+      usAqiRef: string;
+      euAqiRef: string;
+    };
   };
   explore: {
     title: string;
@@ -136,6 +149,20 @@ export interface AppTranslations {
     cleanestLabel: string;
     highestLabel: string;
     timestampWarningPrefix: string;
+    comparisonUnavailable: string;
+    tilesAttribution: string;
+    tableAriaLabel: string;
+    tableHeaders: {
+      city: string;
+      indicativeNaqi: string;
+      category: string;
+      dominant: string;
+      pm25: string;
+      pm10: string;
+      weather: string;
+      trend: string;
+      freshness: string;
+    };
   };
   forecast: {
     title: string;
@@ -212,6 +239,25 @@ export interface AppTranslations {
     qRoad: string;
     whySuggestion: string;
     cannotDetermine: string;
+    prioritySuffix: string;
+    keyFocusLabel: string;
+    outdoorContextLabel: string;
+    userFactorLabel: string;
+    options: {
+      yes: string;
+      partial: string;
+      mechanical: string;
+      open: string;
+      timed: string;
+      closed: string;
+      activeDaily: string;
+      occasionally: string;
+      no: string;
+      frequent: string;
+      sometimes: string;
+      busyRoad: string;
+      quietCourtyard: string;
+    };
   };
   assistant: {
     title: string;
