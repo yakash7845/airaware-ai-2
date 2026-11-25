@@ -125,39 +125,37 @@ export default function LiveAirQualityPage() {
       <section className="bg-white border border-slate-200 rounded-2xl p-5 space-y-3">
         <h2 className="text-sm font-bold text-slate-900">{t.live.supplementaryTitle}</h2>
         <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 text-xs">
-          <div className="p-3 rounded-xl bg-slate-50 border border-slate-200">
-            <p className="text-slate-600">{t.live.supplementaryLabels.dust}</p>
-            <p className="font-bold text-slate-900 mt-0.5">
-              {snapshot.supplementary.dustUgM3 !== null &&
-              snapshot.supplementary.dustUgM3 !== undefined
-                ? `${snapshot.supplementary.dustUgM3} µg/m³`
-                : t.common.unavailable}
-            </p>
-          </div>
-          <div className="p-3 rounded-xl bg-slate-50 border border-slate-200">
-            <p className="text-slate-600">{t.live.supplementaryLabels.aod}</p>
-            <p className="font-bold text-slate-900 mt-0.5">
-              {snapshot.supplementary.aerosolOpticalDepth ?? t.common.unavailable}
-            </p>
-          </div>
-          <div className="p-3 rounded-xl bg-slate-50 border border-slate-200">
-            <p className="text-slate-600">{t.live.supplementaryLabels.uv}</p>
-            <p className="font-bold text-slate-900 mt-0.5">
-              {snapshot.supplementary.uvIndex ?? t.common.unavailable}
-            </p>
-          </div>
-          <div className="p-3 rounded-xl bg-slate-50 border border-slate-200">
-            <p className="text-slate-600">{t.live.supplementaryLabels.usAqiRef}</p>
-            <p className="font-bold text-slate-900 mt-0.5">
-              {snapshot.supplementary.openMeteoUsAqi ?? t.common.unavailable}
-            </p>
-          </div>
-          <div className="p-3 rounded-xl bg-slate-50 border border-slate-200">
-            <p className="text-slate-600">{t.live.supplementaryLabels.euAqiRef}</p>
-            <p className="font-bold text-slate-900 mt-0.5">
-              {snapshot.supplementary.openMeteoEuropeanAqi ?? t.common.unavailable}
-            </p>
-          </div>
+          {[
+            {
+              label: t.live.supplementaryLabels.dust,
+              value:
+                snapshot.supplementary.dustUgM3 !== null &&
+                snapshot.supplementary.dustUgM3 !== undefined
+                  ? `${snapshot.supplementary.dustUgM3} µg/m³`
+                  : t.common.unavailable,
+            },
+            {
+              label: t.live.supplementaryLabels.aod,
+              value: snapshot.supplementary.aerosolOpticalDepth ?? t.common.unavailable,
+            },
+            {
+              label: t.live.supplementaryLabels.uv,
+              value: snapshot.supplementary.uvIndex ?? t.common.unavailable,
+            },
+            {
+              label: t.live.supplementaryLabels.usAqiRef,
+              value: snapshot.supplementary.openMeteoUsAqi ?? t.common.unavailable,
+            },
+            {
+              label: t.live.supplementaryLabels.euAqiRef,
+              value: snapshot.supplementary.openMeteoEuropeanAqi ?? t.common.unavailable,
+            },
+          ].map((metric) => (
+            <div key={metric.label} className="p-3 rounded-xl bg-slate-50 border border-slate-200">
+              <p className="text-slate-600">{metric.label}</p>
+              <p className="font-bold text-slate-900 mt-0.5">{metric.value}</p>
+            </div>
+          ))}
         </div>
       </section>
 

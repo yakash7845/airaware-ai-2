@@ -10,7 +10,7 @@ import {
   DEFAULT_LOCATION,
   PRESET_CITIES,
 } from '@/lib/configuration/presets';
-import { fetchApiJson, postApiJson } from '@/utils/apiClient';
+import { buildLocationRequestBase, fetchApiJson, postApiJson } from '@/utils/apiClient';
 import { escapeMapHtml } from '@/components/maps/PollutionMap';
 
 describe('Providers, Caching, Security Controls & Client Utilities', () => {
@@ -210,5 +210,13 @@ describe('Providers, Caching, Security Controls & Client Utilities', () => {
 
     expect(isSameGeoLocation(DEFAULT_LOCATION, PRESET_CITIES[0]!)).toBe(true);
     expect(isSameGeoLocation(DEFAULT_LOCATION, PRESET_CITIES[1]!)).toBe(false);
+
+    expect(buildLocationRequestBase(DEFAULT_LOCATION)).toEqual({
+      lat: DEFAULT_LOCATION.latitude,
+      lon: DEFAULT_LOCATION.longitude,
+      locationName: DEFAULT_LOCATION.name,
+      timezone: DEFAULT_LOCATION.timezone,
+    });
+    expect(buildLocationRequestBase({ ...DEFAULT_LOCATION, timezone: '' }).timezone).toBe('auto');
   });
 });

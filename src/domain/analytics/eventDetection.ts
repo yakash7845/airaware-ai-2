@@ -17,6 +17,7 @@
  */
 import { EnvironmentalEvent, HourlySlot } from '@/types';
 import { formatLocalHourLabel } from '@/lib/time/timezone';
+import { arithmeticMean } from '@/utils/mathUtils';
 
 /**
  * Transparent threshold constants for rule-based environmental event detection.
@@ -35,6 +36,8 @@ export const EVENT_THRESHOLDS = {
   /** Absolute concentration above which a PM₁₀ surge is classified HIGH severity. */
   pm10HighSeverityAbsolute: 250,
   rapidAqiJumpPoints: 35,
+  /** NAQI level above which category transitions, jumps, and trend shifts become HIGH severity. */
+  aqiHighSeverityThreshold: 200,
   ozoneHighUgM3: 100,
   /** O₃ concentration above which an ozone peak is classified HIGH severity. */
   ozoneHighSeverityUgM3: 168,
@@ -179,7 +182,7 @@ function detectCategoryAndJumpEvents(
       {
         id: `evt-cat-${index}`,
         type: 'CATEGORY_TRANSITION',
-        severity: curAqi > 200 ? 'HIGH' : 'ELEVATED',
+        severity: curAqi > EVENT_THRESHOLDS.aqiHighSeverityThreshold ? 'HIGH' : 'ELEVATED',
         timestamp: slot.time,
         localTime: slot.localTime,
         isForecast: slot.isForecast,
@@ -208,7 +211,7 @@ function detectCategoryAndJumpEvents(
       {
         id: `evt-rapid-${index}`,
         type: 'RAPID_DETERIORATION',
-        severity: curAqi > 200 ? 'HIGH' : 'ELEVATED',
+        severity: curAqi > EVENT_THRESHOLDS.aqiHighSeverityThreshold ? 'HIGH' : 'ELEVATED',
         timestamp: slot.time,
         localTime: slot.localTime,
         isForecast: slot.isForecast,
@@ -252,8 +255,8 @@ function detectForecastDeteriorationEvent(
   const futureAqis = extractAqis(futureSlice);
   if (pastAqis.length < 6 || futureAqis.length < 6) return null;
 
-  const pastMean = pastAqis.reduce((a, b) => a + b, 0) / pastAqis.length;
-  const futureMean = futureAqis.reduce((a, b) => a + b, 0) / futureAqis.length;
+  const pastMean = arithmeticMean(pastAqis) ?? 0;
+  const futureMean = arithmeticMean(futureAqis) ?? 0;
   const pctDiff = pastMean > 0 ? Math.round(((futureMean - pastMean) / pastMean) * 100) : 0;
   if (pctDiff < EVENT_THRESHOLDS.forecastDeteriorationPercent) return null;
 
@@ -261,7 +264,7 @@ function detectForecastDeteriorationEvent(
   return {
     id: 'evt-forecast-det',
     type: 'FORECAST_DETERIORATION',
-    severity: futureMean > 200 ? 'HIGH' : 'ELEVATED',
+    severity: futureMean > EVENT_THRESHOLDS.aqiHighSeverityThreshold ? 'HIGH' : 'ELEVATED',
     timestamp: firstFuture.time,
     localTime: firstFuture.localTime,
     isForecast: true,
@@ -275,6 +278,46 @@ function detectForecastDeteriorationEvent(
     possibleContributingFactors: [
       'Projected lower wind ventilation in upcoming forecast period',
       'CAMS regional dispersion shift across the next diurnal cycle',
+    ],
+  };
+}
+
+/**
+ * Detect a daytime photochemical ground-level ozone peak event for an hourly slot.
+ *
+ * @param slot - Hourly slot to evaluate.
+ * @param index - Positional slot index used for deterministic event IDs.
+ * @param hourNum - Local hour (0–23) restricting peaks to daytime insolation hours (11–17).
+ * @param hourLabel - Formatted local hour label for summary copy.
+ * @returns An `OZONE_PEAK` event when triggered, or `null` otherwise.
+ */
+function detectOzonePeakEvent(
+  slot: HourlySlot,
+  index: number,
+  hourNum: number,
+  hourLabel: string
+): EnvironmentalEvent | null {
+  const curO3 = findPollutant(slot, 'o3');
+  if (curO3 === null || curO3 < EVENT_THRESHOLDS.ozoneHighUgM3 || hourNum < 11 || hourNum > 17) {
+    return null;
+  }
+
+  return {
+    id: `evt-o3-${index}`,
+    type: 'OZONE_PEAK',
+    severity: curO3 >= EVENT_THRESHOLDS.ozoneHighSeverityUgM3 ? 'HIGH' : 'ELEVATED',
+    timestamp: slot.time,
+    localTime: slot.localTime,
+    isForecast: slot.isForecast,
+    pollutant: 'o3',
+    currentValue: Number(curO3.toFixed(1)),
+    unit: 'µg/m³',
+    thresholdDescription: `Daytime O₃ ≥ ${EVENT_THRESHOLDS.ozoneHighUgM3} µg/m³ (WHO 8h / CPCB Satisfactory boundary)`,
+    titleKey: 'event.ozonePeak',
+    summary: `Elevated daytime ground-level O₃ (${curO3.toFixed(1)} µg/m³) projected around ${hourLabel}.`,
+    possibleContributingFactors: [
+      'Strong midday solar radiation accelerating photochemical NO₂/VOC reactions',
+      'Regional ozone advection during warm afternoon hours',
     ],
   };
 }
@@ -314,35 +357,8 @@ export function detectEnvironmentalEvents(
 
     detectCategoryAndJumpEvents(slot, prevSlot, lookbackSlot, i, hourLabel, addEvent);
 
-    const curO3 = findPollutant(slot, 'o3');
-    if (
-      curO3 !== null &&
-      curO3 >= EVENT_THRESHOLDS.ozoneHighUgM3 &&
-      hourNum >= 11 &&
-      hourNum <= 17
-    ) {
-      addEvent(
-        {
-          id: `evt-o3-${i}`,
-          type: 'OZONE_PEAK',
-          severity: curO3 >= EVENT_THRESHOLDS.ozoneHighSeverityUgM3 ? 'HIGH' : 'ELEVATED',
-          timestamp: slot.time,
-          localTime: slot.localTime,
-          isForecast: slot.isForecast,
-          pollutant: 'o3',
-          currentValue: Number(curO3.toFixed(1)),
-          unit: 'µg/m³',
-          thresholdDescription: `Daytime O₃ ≥ ${EVENT_THRESHOLDS.ozoneHighUgM3} µg/m³ (WHO 8h / CPCB Satisfactory boundary)`,
-          titleKey: 'event.ozonePeak',
-          summary: `Elevated daytime ground-level O₃ (${curO3.toFixed(1)} µg/m³) projected around ${hourLabel}.`,
-          possibleContributingFactors: [
-            'Strong midday solar radiation accelerating photochemical NO₂/VOC reactions',
-            'Regional ozone advection during warm afternoon hours',
-          ],
-        },
-        'OZONE_PEAK'
-      );
-    }
+    const ozoneEvt = detectOzonePeakEvent(slot, i, hourNum, hourLabel);
+    if (ozoneEvt) addEvent(ozoneEvt, 'OZONE_PEAK');
   }
 
   const trendEvt = detectForecastDeteriorationEvent(hourlyTimeline, currentIndex);

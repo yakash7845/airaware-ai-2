@@ -23,6 +23,7 @@ import { calculateSubIndexDetail } from './sub-index';
 import { AqiComputeOptions, PollutantConcentrationInput, RollingHourlyPoint } from './types';
 import { formatPollutantDisplay } from './units';
 import { validatePollutantInput } from './validation';
+import { arithmeticMean } from '@/utils/mathUtils';
 
 /**
  * Compute CPCB National Air Quality Index deterministically from validated pollutant concentrations.
@@ -257,31 +258,21 @@ export function computeRollingCpcbNaqi(
       }
     }
 
-    if (validValues.length >= spec.minValidHours) {
-      const mean = validValues.reduce((sum, v) => sum + v, 0) / validValues.length;
+    const meetsCpcbWindow = validValues.length >= spec.minValidHours;
+    if (!meetsCpcbWindow) {
+      allWindowsMeetCpcb = false;
+    }
+
+    const mean = arithmeticMean(validValues);
+    if (mean !== null) {
       rollingInputs.push({
         pollutant,
         value: mean,
         unit,
-        averagingPeriod: spec.averagingPeriod,
+        averagingPeriod: meetsCpcbWindow ? spec.averagingPeriod : '1h',
         hoursSampled: validValues.length,
         hoursRequired: spec.hoursRequired,
       });
-    } else {
-      allWindowsMeetCpcb = false;
-      // If trailing history is shorter than minValidHours (e.g. start of series),
-      // include available slot mean only if at least 1 hour exists and mark as partial
-      if (validValues.length > 0) {
-        const mean = validValues.reduce((sum, v) => sum + v, 0) / validValues.length;
-        rollingInputs.push({
-          pollutant,
-          value: mean,
-          unit,
-          averagingPeriod: '1h',
-          hoursSampled: validValues.length,
-          hoursRequired: spec.hoursRequired,
-        });
-      }
     }
   }
 

@@ -1,3 +1,8 @@
+/**
+ * @module useLocalStorageState
+ * SSR-safe, Zod-validated `useSyncExternalStore` persistence hook with prototype-pollution
+ * filtering and cross-tab `storage` synchronization.
+ */
 'use client';
 
 import { useCallback, useSyncExternalStore } from 'react';
@@ -12,6 +17,13 @@ interface SnapshotCacheEntry<T> {
 
 const memoryCache = new Map<string, SnapshotCacheEntry<unknown>>();
 
+/**
+ * Parse JSON while stripping `__proto__`, `constructor`, and `prototype` keys
+ * to prevent prototype pollution from tampered browser storage entries.
+ *
+ * @param raw - Raw serialized JSON string from localStorage.
+ * @returns Parsed value safe to pass into Zod validation.
+ */
 function safeJsonParse(raw: string): unknown {
   return JSON.parse(raw, (key, val) => {
     if (key === '__proto__' || key === 'constructor' || key === 'prototype') {
@@ -21,6 +33,15 @@ function safeJsonParse(raw: string): unknown {
   });
 }
 
+/**
+ * Persist and synchronize schema-validated client state in `localStorage`.
+ * Falls back cleanly to `defaultValue` during SSR or when private-browsing quota blocks storage.
+ *
+ * @param key - LocalStorage item key.
+ * @param defaultValue - Fallback value returned when absent, invalid, or server-rendered.
+ * @param schema - Zod schema validating persisted JSON before surfacing it to React components.
+ * @returns Stateful `[value, setValue]` tuple.
+ */
 export function useLocalStorageState<T>(
   key: string,
   defaultValue: T,
@@ -31,8 +52,12 @@ export function useLocalStorageState<T>(
       if (typeof window === 'undefined') return () => {};
 
       const onCustom = (e: Event) => {
-        const detail = (e as CustomEvent<{ key: string }>).detail;
-        if (!detail || detail.key === key) onStoreChange();
+        if (e instanceof CustomEvent) {
+          const detail = e.detail as { key?: string } | null;
+          if (!detail || detail.key === key) onStoreChange();
+          return;
+        }
+        onStoreChange();
       };
       const onStorage = (e: StorageEvent) => {
         if (e.key === null || e.key === key) onStoreChange();

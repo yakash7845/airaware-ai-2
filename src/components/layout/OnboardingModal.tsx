@@ -2,9 +2,10 @@
 
 import { useState } from 'react';
 import { LocateFixed, ShieldCheck } from 'lucide-react';
-import { buildFamilyProfile, PRESET_CITIES } from '@/lib/configuration/presets';
+import { buildFamilyProfile, PRESET_CITIES, PROFILE_CATEGORIES } from '@/lib/configuration/presets';
 import { useEnvironment } from '@/hooks/useEnvironmentContext';
-import { EnvironmentalInterest, Language, ProfileCategory } from '@/types';
+import { EnvironmentalInterest, ProfileCategory } from '@/types';
+import { LANGUAGE_PICKER_OPTIONS } from '@/utils/languageUtils';
 import { ModalShell } from '../ui/ModalShell';
 
 export function OnboardingModal() {
@@ -75,13 +76,7 @@ export function OnboardingModal() {
         <section className="space-y-2">
           <h3 className="font-bold text-slate-900">1. {t.onboarding.stepLanguage}</h3>
           <div className="flex flex-wrap gap-2">
-            {(
-              [
-                { code: 'en', label: 'English' },
-                { code: 'ta', label: 'தமிழ் (Tamil)' },
-                { code: 'hi', label: 'हिन्दी (Hindi)' },
-              ] as Array<{ code: Language; label: string }>
-            ).map((opt) => (
+            {LANGUAGE_PICKER_OPTIONS.map((opt) => (
               <button
                 key={opt.code}
                 type="button"
@@ -188,11 +183,11 @@ export function OnboardingModal() {
                 onChange={(e) => setNewProfileCat(e.target.value as ProfileCategory)}
                 className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-slate-50 text-slate-900"
               >
-                <option value="GENERAL">{t.exposure.roles.GENERAL}</option>
-                <option value="CHILD">{t.exposure.roles.CHILD}</option>
-                <option value="TEEN">{t.exposure.roles.TEEN}</option>
-                <option value="ADULT">{t.exposure.roles.ADULT}</option>
-                <option value="SENIOR">{t.exposure.roles.SENIOR}</option>
+                {PROFILE_CATEGORIES.map((cat) => (
+                  <option key={cat} value={cat}>
+                    {t.exposure.roles[cat]}
+                  </option>
+                ))}
               </select>
             </div>
           </div>

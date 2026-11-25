@@ -1,3 +1,9 @@
+/**
+ * @module logger
+ * Credential-redacting diagnostic logger for AirAware server handlers and services.
+ * Automatically scrubs Google API keys, Bearer tokens, and header key/value secrets
+ * before emitting structured warnings or errors.
+ */
 const SECRET_PATTERNS = [
   /AIza[0-9A-Za-z\-_]{20,}/g,
   /(x-goog-api-key|authorization|api[-_]?key)\s*[:=]\s*[^\s,;]+/gi,

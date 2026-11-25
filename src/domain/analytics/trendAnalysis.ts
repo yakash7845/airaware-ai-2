@@ -1,11 +1,23 @@
+/**
+ * @module trendAnalysis
+ * Builds trend analytics summaries over a 48 h + 72 h hourly timeline,
+ * computing past vs. forecast mean AQI, trend direction, and per-day summaries.
+ */
+
 import { DailyForecastSummary, HourlySlot, PollutantId, TrendAnalyticsSummary } from '@/types';
 import { formatLocalHourLabel } from '@/lib/time/timezone';
+import { meanOf, meanOfRounded } from '@/utils/mathUtils';
 
-function meanOf(nums: number[]): number | null {
-  if (nums.length === 0) return null;
-  return Number((nums.reduce((a, b) => a + b, 0) / nums.length).toFixed(1));
-}
-
+/**
+ * Build a comprehensive trend analytics summary from a full hourly timeline.
+ *
+ * Splits slots into past (hindcast) and forecast segments, computes mean AQI for
+ * each segment, determines trend direction (IMPROVING / STABLE / WORSENING), and
+ * groups slots by local calendar date for daily summary cards.
+ *
+ * @param hourlyTimeline - The full ordered array of hourly slots (past + forecast).
+ * @returns A {@link TrendAnalyticsSummary} with per-day breakdowns and overall trend direction.
+ */
 export function buildTrendAnalytics(hourlyTimeline: readonly HourlySlot[]): TrendAnalyticsSummary {
   const pastSlots = hourlyTimeline.filter((s) => !s.isForecast);
   const forecastSlots = hourlyTimeline.filter((s) => s.isForecast);
@@ -17,12 +29,8 @@ export function buildTrendAnalytics(hourlyTimeline: readonly HourlySlot[]): Tren
     .map((s) => s.computedAqi?.value)
     .filter((v): v is number => v !== null && v !== undefined);
 
-  const pastMeanAqi =
-    pastAqis.length > 0 ? Math.round(pastAqis.reduce((a, b) => a + b, 0) / pastAqis.length) : null;
-  const forecastMeanAqi =
-    forecastAqis.length > 0
-      ? Math.round(forecastAqis.reduce((a, b) => a + b, 0) / forecastAqis.length)
-      : null;
+  const pastMeanAqi = meanOfRounded(pastAqis);
+  const forecastMeanAqi = meanOfRounded(forecastAqis);
 
   let aqiDeltaPercent: number | null = null;
   let trendDirection: TrendAnalyticsSummary['trendDirection'] = 'INSUFFICIENT_DATA';
@@ -84,7 +92,7 @@ export function buildTrendAnalytics(hourlyTimeline: readonly HourlySlot[]): Tren
       date,
       minAqi: aqis.length > 0 ? Math.min(...aqis) : null,
       maxAqi: aqis.length > 0 ? Math.max(...aqis) : null,
-      avgAqi: aqis.length > 0 ? Math.round(aqis.reduce((a, b) => a + b, 0) / aqis.length) : null,
+      avgAqi: meanOfRounded(aqis),
       dominantPollutant,
       avgPm25: meanOf(pm25s),
       avgPm10: meanOf(pm10s),

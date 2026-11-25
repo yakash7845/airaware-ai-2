@@ -1,3 +1,9 @@
+/**
+ * @module fallbackBuilder
+ * Deterministic, multilingual environmental assistant fallback generator.
+ * Guarantees grounded structured answers whenever Gemini is unconfigured,
+ * times out, or fails safety/grounding verification.
+ */
 import { POLLUTANT_SPECS } from '@/domain/aqi';
 import { POLLUTANT_EDUCATION } from '@/domain/pollutants/educationalInfo';
 import { buildPollutionIntelligence } from '@/domain/analytics/pollutionIntelligence';

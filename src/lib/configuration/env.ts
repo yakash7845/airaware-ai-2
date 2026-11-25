@@ -1,4 +1,13 @@
+/**
+ * @module env
+ * Server-side Zod-validated environment configuration and runtime settings.
+ *
+ * Enforces HTTPS upstream endpoints and isolates `GEMINI_API_KEY` solely to
+ * server execution paths via {@link getServerGeminiApiKey}. Public literals shared
+ * with browser UI are delegated to `publicConstants.ts`.
+ */
 import { z } from 'zod';
+import { COORDINATE_BOUNDS, PUBLIC_ATTRIBUTION, PUBLIC_SECURITY_LIMITS } from './publicConstants';
 
 const HttpsUrlSchema = z
   .string()
@@ -25,6 +34,12 @@ const EnvSchema = z.object({
   RATE_LIMIT_AI_MAX: z.coerce.number().int().positive().optional().default(20),
 });
 
+/**
+ * Parse and validate `process.env` once at module initialization, falling back cleanly
+ * to schema defaults when optional variables are omitted.
+ *
+ * @returns Normalized, Zod-validated server configuration object.
+ */
 function loadValidatedEnv() {
   const parsed = EnvSchema.safeParse({
     GEMINI_API_KEY: process.env.GEMINI_API_KEY?.trim() || undefined,
@@ -139,26 +154,17 @@ export const APP_CONFIG = {
     standardMax: ENV.RATE_LIMIT_STANDARD_MAX,
     aiMax: ENV.RATE_LIMIT_AI_MAX,
   },
-  security: {
-    maxJsonBodyBytes: 256 * 1024,
-    maxCompareLocations: 4,
-    maxQuestionLength: 800,
-  },
-  coordinates: {
-    minLat: -90,
-    maxLat: 90,
-    minLon: -180,
-    maxLon: 180,
-  },
-  attribution: {
-    openMeteoAir: 'Air quality data by Open-Meteo.com (Copernicus CAMS data, CC BY 4.0)',
-    openMeteoWeather: 'Weather data by Open-Meteo.com (CC BY 4.0)',
-    openMeteoGeo: 'Geocoding by Open-Meteo.com (GeoNames)',
-    openStreetMap: 'Map tiles © OpenStreetMap contributors (ODbL)',
-    cpcb: 'CPCB National Air Quality Index methodology (MoEFCC, Oct 2014)',
-  },
+  security: PUBLIC_SECURITY_LIMITS,
+  coordinates: COORDINATE_BOUNDS,
+  attribution: PUBLIC_ATTRIBUTION,
 } as const;
 
+/**
+ * Retrieve the server-only Gemini API key from the process environment, treating
+ * empty strings or placeholder values as unconfigured.
+ *
+ * @returns A trimmed API key string, or an empty string if unavailable.
+ */
 export function getServerGeminiApiKey(): string {
   const key = process.env.GEMINI_API_KEY?.trim() ?? ENV.GEMINI_API_KEY;
   if (!key || key === 'your_gemini_api_key_here') {

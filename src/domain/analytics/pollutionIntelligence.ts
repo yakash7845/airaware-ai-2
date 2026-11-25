@@ -1,6 +1,15 @@
-import { AirSnapshot, CorePollutantId, Language } from '@/types';
+/**
+ * @module pollutionIntelligence
+ * Deterministic analytical narrative builder summarizing AQI methodology,
+ * dominant pollutant education, forecast trends, and weather dispersion context.
+ */
+import { AirSnapshot, CorePollutantId, Language, PollutantId } from '@/types';
 import { POLLUTANT_EDUCATION } from '@/domain/pollutants/educationalInfo';
-import { POLLUTANT_SPECS } from '@/domain/aqi';
+import { CORE_SIX_POLLUTANTS, POLLUTANT_SPECS } from '@/domain/aqi';
+
+function isCorePollutant(pollutant: PollutantId | null): pollutant is CorePollutantId {
+  return pollutant !== null && (CORE_SIX_POLLUTANTS as readonly PollutantId[]).includes(pollutant);
+}
 
 export interface PollutionInsightReport {
   headline: string;
@@ -11,6 +20,13 @@ export interface PollutionInsightReport {
   anomaliesDetected: string[];
 }
 
+/**
+ * Generate a localized, deterministic analytical insight report from an {@link AirSnapshot}.
+ *
+ * @param snapshot - Normalized environmental snapshot.
+ * @param language - Target localization language (`'en'`, `'ta'`, `'hi'`).
+ * @returns Structured analytical summary, takeaways, and detected anomalies.
+ */
 export function buildPollutionIntelligence(
   snapshot: AirSnapshot,
   language: Language = 'en'
@@ -21,16 +37,7 @@ export function buildPollutionIntelligence(
   const dom = computedAqi.dominantPollutant;
   const domSpec = dom ? POLLUTANT_SPECS[dom] : null;
   const domMeas = dom ? current.find((m) => m.pollutant === dom) : undefined;
-  const edu =
-    dom &&
-    (dom === 'pm2_5' ||
-      dom === 'pm10' ||
-      dom === 'no2' ||
-      dom === 'so2' ||
-      dom === 'co' ||
-      dom === 'o3')
-      ? POLLUTANT_EDUCATION[dom as CorePollutantId]
-      : null;
+  const edu = isCorePollutant(dom) ? POLLUTANT_EDUCATION[dom] : null;
 
   const anomaliesDetected = events.map((e) => e.summary);
 

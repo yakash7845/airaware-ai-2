@@ -1,9 +1,10 @@
 'use client';
 
 import { Download, LocateFixed, RotateCcw } from 'lucide-react';
-import { APP_CONFIG } from '@/lib/configuration/env';
+import { PUBLIC_ATTRIBUTION } from '@/lib/configuration/publicConstants';
 import { useEnvironment } from '@/hooks/useEnvironmentContext';
-import { Language, TextSize } from '@/types';
+import { TextSize } from '@/types';
+import { LANGUAGE_PICKER_OPTIONS } from '@/utils/languageUtils';
 
 export default function SettingsPage() {
   const {
@@ -51,13 +52,7 @@ export default function SettingsPage() {
       <section className="bg-white border border-slate-200 rounded-2xl p-5 space-y-3 text-xs">
         <h2 className="text-sm font-bold text-slate-900">{t.settings.languageTitle}</h2>
         <div className="flex flex-wrap gap-2">
-          {(
-            [
-              { code: 'en', label: 'English' },
-              { code: 'ta', label: 'தமிழ் (Tamil)' },
-              { code: 'hi', label: 'हिन्दी (Hindi)' },
-            ] as Array<{ code: Language; label: string }>
-          ).map((opt) => (
+          {LANGUAGE_PICKER_OPTIONS.map((opt) => (
             <button
               key={opt.code}
               type="button"
@@ -174,11 +169,11 @@ export default function SettingsPage() {
       <section className="bg-white border border-slate-200 rounded-2xl p-5 space-y-2 text-xs">
         <h2 className="text-sm font-bold text-slate-900">{t.settings.dataSourcesTitle}</h2>
         <ul className="list-disc pl-5 text-slate-700 space-y-1">
-          <li>{APP_CONFIG.attribution.openMeteoAir}</li>
-          <li>{APP_CONFIG.attribution.openMeteoWeather}</li>
-          <li>{APP_CONFIG.attribution.openMeteoGeo}</li>
-          <li>{APP_CONFIG.attribution.openStreetMap}</li>
-          <li>{APP_CONFIG.attribution.cpcb}</li>
+          <li>{PUBLIC_ATTRIBUTION.openMeteoAir}</li>
+          <li>{PUBLIC_ATTRIBUTION.openMeteoWeather}</li>
+          <li>{PUBLIC_ATTRIBUTION.openMeteoGeo}</li>
+          <li>{PUBLIC_ATTRIBUTION.openStreetMap}</li>
+          <li>{PUBLIC_ATTRIBUTION.cpcb}</li>
         </ul>
       </section>
     </div>

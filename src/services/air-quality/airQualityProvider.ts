@@ -1,38 +1,42 @@
+/**
+ * @module airQualityProvider
+ * Fetches and caches hourly Copernicus CAMS atmospheric composition feeds from Open-Meteo.
+ */
 import { APP_CONFIG } from '@/lib/configuration/env';
 import {
   OpenMeteoAirResponseSchema,
   ValidatedOpenMeteoAir,
 } from '@/lib/validation/openMeteoSchemas';
-import { serverCache } from '@/services/caching/ttlCache';
-import { assertValidCoordinates, fetchValidatedJson } from '@/services/http/fetchJson';
+import { fetchCachedOpenMeteoFeed } from '@/services/http/openMeteoClient';
 
-export async function fetchAirQuality(
+/**
+ * Retrieve Zod-validated CAMS air quality concentrations (trailing 48 h + 72 h forecast)
+ * for the requested coordinates, served from LRU+TTL server cache when fresh.
+ *
+ * @param latitude - WGS-84 latitude (-90 to 90).
+ * @param longitude - WGS-84 longitude (-180 to 180).
+ * @param timezone - Target IANA timezone or `'auto'`.
+ * @param forceRefresh - Evict cached feed and re-fetch upstream when `true`.
+ * @returns Validated Open-Meteo air quality payload.
+ */
+export function fetchAirQuality(
   latitude: number,
   longitude: number,
   timezone: string = 'auto',
   forceRefresh: boolean = false
 ): Promise<ValidatedOpenMeteoAir> {
-  const { latRounded, lonRounded } = assertValidCoordinates(latitude, longitude, 'open-meteo-air');
-  const cacheKey = `aq:${latRounded}:${lonRounded}:${timezone}`;
-
-  if (forceRefresh) {
-    serverCache.delete(cacheKey);
-  } else {
-    const cached = serverCache.get<ValidatedOpenMeteoAir>(cacheKey);
-    if (cached) return cached;
-  }
-
-  const url = `${APP_CONFIG.openMeteoAir.baseUrl}?latitude=${latRounded}&longitude=${lonRounded}&hourly=${APP_CONFIG.openMeteoAir.hourlyParams}&current=${APP_CONFIG.openMeteoAir.currentParams}&past_days=${APP_CONFIG.openMeteoAir.pastDays}&forecast_days=${APP_CONFIG.openMeteoAir.forecastDays}&timezone=${encodeURIComponent(timezone)}`;
-
-  const data = await fetchValidatedJson(url, {
+  return fetchCachedOpenMeteoFeed(latitude, longitude, timezone, forceRefresh, {
     provider: 'open-meteo-air',
     label: 'Open-Meteo Air Quality API',
+    cachePrefix: 'aq',
+    baseUrl: APP_CONFIG.openMeteoAir.baseUrl,
+    hourlyParams: APP_CONFIG.openMeteoAir.hourlyParams,
+    currentParams: APP_CONFIG.openMeteoAir.currentParams,
+    pastDays: APP_CONFIG.openMeteoAir.pastDays,
+    forecastDays: APP_CONFIG.openMeteoAir.forecastDays,
     timeoutMs: APP_CONFIG.openMeteoAir.timeoutMs,
     maxRetries: APP_CONFIG.openMeteoAir.maxRetries,
+    ttlMs: APP_CONFIG.cache.airQualityTtlMs,
     schema: OpenMeteoAirResponseSchema,
-    dedupKey: cacheKey,
   });
-
-  serverCache.set(cacheKey, data, APP_CONFIG.cache.airQualityTtlMs);
-  return data;
 }

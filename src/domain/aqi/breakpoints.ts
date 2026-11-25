@@ -1,3 +1,7 @@
+/**
+ * @module breakpoints
+ * Official CPCB National Air Quality Index concentration breakpoint tables (October 2014).
+ */
 import { PollutantId } from '@/types';
 import { BreakpointRange } from './types';
 

@@ -257,6 +257,20 @@ describe('Gemini Enrichment, WMO Weather, Localization & Time Helpers', () => {
     const enrichedIndoor = await enrichIndoorAdvisorWithAi(baseIndoor);
     expect(enrichedIndoor.aiEnriched).toBe(true);
 
+    // Malformed non-JSON response falls back cleanly to deterministic responses
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
+      Response.json({
+        candidates: [{ content: { parts: [{ text: 'not-valid-json' }] } }],
+      })
+    );
+    const badJsonChat = await runGroundedAiAssistant({
+      question: 'What is PM2.5?',
+      primarySnapshot: snap,
+      category: 'ADULT',
+      language: 'en',
+    });
+    expect(badJsonChat.structured?.engineMode).toBe('DETERMINISTIC_FALLBACK');
+
     process.env.GEMINI_API_KEY = prevKey;
   });
 });

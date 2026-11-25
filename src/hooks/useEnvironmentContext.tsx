@@ -1,3 +1,8 @@
+/**
+ * @module useEnvironmentContext
+ * Central React Context managing active location, household profiles, indoor setup,
+ * localization dictionary, WCAG accessibility attributes, and live environmental snapshot fetching.
+ */
 'use client';
 
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
@@ -33,6 +38,21 @@ import {
   SavedLocationsSchema,
 } from './storageSchemas';
 import { useLocalStorageState } from './useLocalStorageState';
+
+function buildGeolocationRecord(coords: GeolocationCoordinates): GeoLocation {
+  const lat = Number(coords.latitude.toFixed(4));
+  const lon = Number(coords.longitude.toFixed(4));
+  const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || 'auto';
+  return {
+    id: Math.round(Math.abs(lat * 1000 + lon * 100)),
+    name: `My Location (${lat.toFixed(2)}°, ${lon.toFixed(2)}°)`,
+    latitude: lat,
+    longitude: lon,
+    country: 'Browser Geolocation',
+    timezone: tz,
+    countryCode: 'GPS',
+  };
+}
 
 interface EnvironmentContextValue {
   language: Language;
@@ -221,18 +241,7 @@ export function EnvironmentProvider({ children }: { children: React.ReactNode })
     setGeolocationStatus(t.common.geolocating);
     navigator.geolocation.getCurrentPosition(
       (pos) => {
-        const lat = Number(pos.coords.latitude.toFixed(4));
-        const lon = Number(pos.coords.longitude.toFixed(4));
-        const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || 'auto';
-        const geoLoc: GeoLocation = {
-          id: Math.round(Math.abs(lat * 1000 + lon * 100)),
-          name: `My Location (${lat.toFixed(2)}°, ${lon.toFixed(2)}°)`,
-          latitude: lat,
-          longitude: lon,
-          country: 'Browser Geolocation',
-          timezone: tz,
-          countryCode: 'GPS',
-        };
+        const geoLoc = buildGeolocationRecord(pos.coords);
         setGeolocationStatus(null);
         selectLocation(geoLoc);
       },
@@ -266,42 +275,76 @@ export function EnvironmentProvider({ children }: { children: React.ReactNode })
     setSavedLocations,
   ]);
 
-  const value: EnvironmentContextValue = {
-    language,
-    setLanguage,
-    t,
-    accessibility,
-    setAccessibility,
-    currentLocation,
-    selectLocation,
-    savedLocations,
-    addSavedLocation,
-    removeSavedLocation,
-    profiles,
-    setProfiles,
-    activeProfile,
-    setActiveProfileId,
-    interests,
-    setInterests,
-    indoorSetup,
-    setIndoorSetup,
-    onboardingCompleted,
-    setOnboardingCompleted,
-    isOnboardingOpen,
-    setIsOnboardingOpen,
-    snapshot,
-    isLoading,
-    isRefreshing,
-    error,
-    geolocationStatus,
-    requestBrowserGeolocation,
-    refreshSnapshot,
-    resetAllLocalData,
-  };
+  const value = useMemo<EnvironmentContextValue>(
+    () => ({
+      language,
+      setLanguage,
+      t,
+      accessibility,
+      setAccessibility,
+      currentLocation,
+      selectLocation,
+      savedLocations,
+      addSavedLocation,
+      removeSavedLocation,
+      profiles,
+      setProfiles,
+      activeProfile,
+      setActiveProfileId,
+      interests,
+      setInterests,
+      indoorSetup,
+      setIndoorSetup,
+      onboardingCompleted,
+      setOnboardingCompleted,
+      isOnboardingOpen,
+      setIsOnboardingOpen,
+      snapshot,
+      isLoading,
+      isRefreshing,
+      error,
+      geolocationStatus,
+      requestBrowserGeolocation,
+      refreshSnapshot,
+      resetAllLocalData,
+    }),
+    [
+      accessibility,
+      activeProfile,
+      addSavedLocation,
+      currentLocation,
+      error,
+      geolocationStatus,
+      indoorSetup,
+      interests,
+      isLoading,
+      isOnboardingOpen,
+      isRefreshing,
+      language,
+      onboardingCompleted,
+      profiles,
+      refreshSnapshot,
+      removeSavedLocation,
+      requestBrowserGeolocation,
+      resetAllLocalData,
+      savedLocations,
+      selectLocation,
+      setAccessibility,
+      setActiveProfileId,
+      setIndoorSetup,
+      setInterests,
+      setLanguage,
+      setOnboardingCompleted,
+      setProfiles,
+      snapshot,
+      t,
+    ]
+  );
 
   return <EnvironmentContext.Provider value={value}>{children}</EnvironmentContext.Provider>;
 }
 
+/** Consume shared AirAware location, profile, i18n, accessibility, and snapshot context. */
 export function useEnvironment(): EnvironmentContextValue {
   const ctx = useContext(EnvironmentContext);
   if (!ctx) {

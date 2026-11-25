@@ -1,3 +1,7 @@
+/**
+ * @module api/health
+ * `GET /api/health` — Operational health, Gemini key configuration status, and cache statistics.
+ */
 import { NextResponse } from 'next/server';
 import { getServerGeminiApiKey } from '@/lib/configuration/env';
 import { serverCache } from '@/services/caching/ttlCache';

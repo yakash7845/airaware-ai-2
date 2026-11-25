@@ -1,3 +1,7 @@
+/**
+ * @module api/explain
+ * `POST /api/explain` — Generates profile-tailored environmental guidance grounded server-side.
+ */
 import { NextRequest, NextResponse } from 'next/server';
 import { enforceRouteRateLimit } from '@/lib/security/withRateLimit';
 import {

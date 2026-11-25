@@ -1,4 +1,18 @@
+/**
+ * @module presets
+ * Centralized default household profiles, profile category metadata, and
+ * representative preset cities across India.
+ */
 import { FamilyProfile, GeoLocation, ProfileCategory } from '@/types';
+
+/** Ordered list of supported household profile categories rendered in pickers. */
+export const PROFILE_CATEGORIES: readonly ProfileCategory[] = [
+  'GENERAL',
+  'CHILD',
+  'TEEN',
+  'ADULT',
+  'SENIOR',
+];
 
 export const PROFILE_CATEGORY_DEFAULTS: Record<
   ProfileCategory,

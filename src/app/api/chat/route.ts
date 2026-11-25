@@ -1,3 +1,8 @@
+/**
+ * @module api/chat
+ * `POST /api/chat` — Handles grounded AIRWARE AI Assistant requests with prompt injection guards,
+ * structured Zod validation, numeric grounding checks, and deterministic fallback.
+ */
 import { NextRequest, NextResponse } from 'next/server';
 import { enforceRouteRateLimit } from '@/lib/security/withRateLimit';
 import {

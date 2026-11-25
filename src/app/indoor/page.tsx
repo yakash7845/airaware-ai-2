@@ -4,8 +4,8 @@ import { useEffect, useState } from 'react';
 import { AlertCircle, Info } from 'lucide-react';
 import { evaluateIndoorGuidance } from '@/domain/recommendations/indoorAdvisor';
 import { useEnvironment } from '@/hooks/useEnvironmentContext';
-import { IndoorAdvisorPlan, IndoorSuggestion } from '@/types';
-import { postApiJson } from '@/utils/apiClient';
+import { IndoorAdvisorPlan, IndoorAdvisorRequestPayload, IndoorSuggestion } from '@/types';
+import { buildLocationRequestBase, postApiJson } from '@/utils/apiClient';
 import { IndoorSetupForm } from '@/components/indoor/IndoorSetupForm';
 import { IndoorSuggestionModal } from '@/components/indoor/IndoorSuggestionModal';
 import { ErrorStateCard, LoadingStateCard } from '@/components/ui/StateCards';
@@ -36,13 +36,10 @@ export default function IndoorAdvisorPage() {
 
     async function loadPlan() {
       try {
-        const data = await postApiJson<Record<string, unknown>, IndoorAdvisorPlan>(
+        const data = await postApiJson<IndoorAdvisorRequestPayload, IndoorAdvisorPlan>(
           '/api/indoor-advisor',
           {
-            lat: currentLocation.latitude,
-            lon: currentLocation.longitude,
-            locationName: currentLocation.name,
-            timezone: currentLocation.timezone || 'auto',
+            ...buildLocationRequestBase(currentLocation),
             setup: indoorSetup,
             profileCategory: activeProfile.category,
             language,

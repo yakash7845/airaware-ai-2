@@ -19,17 +19,12 @@
 import { inspectUserPrompt } from '@/lib/security/promptGuard';
 import { logger } from '@/lib/logging/logger';
 import { AirSnapshot, ChatMessage, Language, ProfileCategory, StructuredAiResponse } from '@/types';
+import { toLanguageDisplayName } from '@/utils/languageUtils';
 import { buildDeterministicChatResponse } from './fallbackBuilder';
 import { callGeminiStructured, parseJsonFromModel } from './geminiClient';
 import { StructuredAiOutputSchema, validateAiProseSafety } from './responseSchema';
 
 export { buildDeterministicChatResponse };
-
-const LANGUAGE_NAMES: Record<Language, string> = {
-  ta: 'Tamil',
-  hi: 'Hindi',
-  en: 'English',
-};
 
 function collectAllowedNumbersFromSnapshots(snapshots: readonly AirSnapshot[]): number[] {
   const nums: number[] = [];
@@ -165,7 +160,7 @@ export async function runGroundedAiAssistant(params: {
     ...comparisonSnapshots,
   ]);
   const systemInstruction = `You are AIRWARE AI INTELLIGENCE ASSISTANT, a scientific environmental communication assistant.
-Target profile: ${category}. Response language: ${LANGUAGE_NAMES[language]}.
+Target profile: ${category}. Response language: ${toLanguageDisplayName(language)}.
 STRICT GROUNDING RULES:
 1. Only cite numerical measurements and AQI values present in VERIFIED_CONTEXT JSON. Never invent numbers.
 2. Distinguish verified CAMS regional model estimates (~45 km grid), calculated CPCB NAQI values, forecasts, and general environmental science. Never claim model data is a ground-station sensor or indoor reading.
@@ -217,7 +212,13 @@ STRICT GROUNDING RULES:
       engineMode: 'GEMINI_GROUNDED',
     };
     return buildAssistantMessage(structured, category, language);
-  } catch {
+  } catch (err: unknown) {
+    logger.warn(
+      'AiAssistant',
+      err instanceof Error
+        ? `Gemini JSON parsing failed: ${err.message}`
+        : 'Gemini response parsing failed'
+    );
     return buildAssistantMessage(deterministicFallback, category, language);
   }
 }

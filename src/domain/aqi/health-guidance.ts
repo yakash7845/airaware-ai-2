@@ -1,3 +1,7 @@
+/**
+ * @module health-guidance
+ * Official CPCB category-aligned non-medical guidance statements in English, Tamil, and Hindi.
+ */
 import { CpcbCategoryKey, Language } from '@/types';
 
 const HEALTH_GUIDANCE: Record<Language, Record<CpcbCategoryKey, string>> = {

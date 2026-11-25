@@ -1,6 +1,12 @@
+/**
+ * @module apiSchemas
+ * Centralized Zod validation schemas, JSON body enforcement, and standardized API
+ * error response builders shared across all AirAware Next.js route handlers.
+ */
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { APP_CONFIG } from '@/lib/configuration/env';
+import { COORDINATE_BOUNDS } from '@/lib/configuration/publicConstants';
 import { AppError, RateLimitError, RequestValidationError } from '@/lib/errors/appError';
 import { logger } from '@/lib/logging/logger';
 import { RateLimitDecision } from '@/lib/security/rateLimit';
@@ -17,6 +23,18 @@ export const ActivityTypeSchema = z.enum([
   'OUTDOOR_RECREATION',
 ]);
 export const TimePreferenceSchema = z.enum(['ANY', 'MORNING', 'MIDDAY', 'EVENING']);
+
+const LatitudeNumberSchema = z
+  .number()
+  .finite()
+  .min(COORDINATE_BOUNDS.minLat)
+  .max(COORDINATE_BOUNDS.maxLat);
+
+const LongitudeNumberSchema = z
+  .number()
+  .finite()
+  .min(COORDINATE_BOUNDS.minLon)
+  .max(COORDINATE_BOUNDS.maxLon);
 
 export const SafeTimezoneSchema = z
   .string()
@@ -37,17 +55,16 @@ export const LocationNameSchema = z
   .optional()
   .default('Selected Location');
 
+const GroundedLocationFields = {
+  lat: LatitudeNumberSchema,
+  lon: LongitudeNumberSchema,
+  locationName: LocationNameSchema,
+  timezone: SafeTimezoneSchema,
+};
+
 export const CoordinatesQuerySchema = z.object({
-  lat: z.coerce
-    .number()
-    .finite()
-    .min(APP_CONFIG.coordinates.minLat)
-    .max(APP_CONFIG.coordinates.maxLat),
-  lon: z.coerce
-    .number()
-    .finite()
-    .min(APP_CONFIG.coordinates.minLon)
-    .max(APP_CONFIG.coordinates.maxLon),
+  lat: z.coerce.number().finite().min(COORDINATE_BOUNDS.minLat).max(COORDINATE_BOUNDS.maxLat),
+  lon: z.coerce.number().finite().min(COORDINATE_BOUNDS.minLon).max(COORDINATE_BOUNDS.maxLon),
   name: LocationNameSchema,
   timezone: SafeTimezoneSchema,
   refresh: z.enum(['true', 'false']).optional(),
@@ -55,8 +72,8 @@ export const CoordinatesQuerySchema = z.object({
 
 export const LocationRefSchema = z.object({
   name: LocationNameSchema,
-  lat: z.number().finite().min(-90).max(90),
-  lon: z.number().finite().min(-180).max(180),
+  lat: LatitudeNumberSchema,
+  lon: LongitudeNumberSchema,
   timezone: SafeTimezoneSchema,
 });
 
@@ -66,19 +83,13 @@ export const CompareRequestSchema = z.object({
 });
 
 export const ExplainRequestSchema = z.object({
-  lat: z.number().finite().min(-90).max(90),
-  lon: z.number().finite().min(-180).max(180),
-  locationName: LocationNameSchema,
-  timezone: SafeTimezoneSchema,
+  ...GroundedLocationFields,
   profileCategory: ProfileCategorySchema.optional().default('ADULT'),
   language: LanguageSchema.optional().default('en'),
 });
 
 export const BestWindowRequestSchema = z.object({
-  lat: z.number().finite().min(-90).max(90),
-  lon: z.number().finite().min(-180).max(180),
-  locationName: LocationNameSchema,
-  timezone: SafeTimezoneSchema,
+  ...GroundedLocationFields,
   activity: ActivityTypeSchema.optional().default('WALKING'),
   profileCategory: ProfileCategorySchema.optional().default('ADULT'),
   language: LanguageSchema.optional().default('en'),
@@ -100,10 +111,7 @@ export const IndoorSetupSchema = z.object({
 });
 
 export const IndoorAdvisorRequestSchema = z.object({
-  lat: z.number().finite().min(-90).max(90),
-  lon: z.number().finite().min(-180).max(180),
-  locationName: LocationNameSchema,
-  timezone: SafeTimezoneSchema,
+  ...GroundedLocationFields,
   setup: IndoorSetupSchema.optional().default({
     naturallyVentilated: null,
     windowsStatus: null,
@@ -118,10 +126,7 @@ export const IndoorAdvisorRequestSchema = z.object({
 
 export const ChatRequestSchema = z.object({
   message: z.string().trim().min(1).max(APP_CONFIG.security.maxQuestionLength),
-  lat: z.number().finite().min(-90).max(90),
-  lon: z.number().finite().min(-180).max(180),
-  locationName: LocationNameSchema,
-  timezone: SafeTimezoneSchema,
+  ...GroundedLocationFields,
   compareLocations: z.array(LocationRefSchema).max(3).optional().default([]),
   profileCategory: ProfileCategorySchema.optional().default('ADULT'),
   language: LanguageSchema.optional().default('en'),
@@ -139,6 +144,13 @@ export const ChatRequestSchema = z.object({
 
 const STRICT_COORD_RE = /^-?\d+(?:\.\d+)?$/;
 
+/**
+ * Parse and strictly validate `lat`, `lon`, `name`, `timezone`, and `refresh`
+ * URL search parameters, rejecting non-numeric strings before coercion.
+ *
+ * @param searchParams - Incoming request `URLSearchParams`.
+ * @returns Validated coordinate query object.
+ */
 export function parseStrictCoordinatesQuery(searchParams: URLSearchParams) {
   const rawLat = searchParams.get('lat');
   const rawLon = searchParams.get('lon');
@@ -174,6 +186,10 @@ export function parseStrictCoordinatesQuery(searchParams: URLSearchParams) {
 /**
  * Enforce JSON Content-Type (when header is present), bounded body size, JSON parsing,
  * and Zod schema validation on incoming POST endpoints.
+ *
+ * @param request - Incoming NextRequest object.
+ * @param schema - Zod schema validating the parsed JSON payload.
+ * @returns Validated typed payload inferred from `schema`.
  */
 export async function parseValidatedJsonBody<T extends z.ZodTypeAny>(
   request: NextRequest,
@@ -230,6 +246,12 @@ export async function parseValidatedJsonBody<T extends z.ZodTypeAny>(
   return result.data;
 }
 
+/**
+ * Format standard `X-RateLimit-*` and conditional `Retry-After` HTTP response headers.
+ *
+ * @param decision - Decision returned by `enforceRouteRateLimit`.
+ * @returns Header record ready for `NextResponse.json`.
+ */
 export function rateLimitHeaders(decision: RateLimitDecision): Record<string, string> {
   return {
     'X-RateLimit-Limit': String(decision.limit),
@@ -241,6 +263,15 @@ export function rateLimitHeaders(decision: RateLimitDecision): Record<string, st
   };
 }
 
+/**
+ * Map known {@link AppError} subclasses and unexpected failures into a standardized
+ * JSON error envelope without leaking internal stack traces or secrets.
+ *
+ * @param routeName - Route label recorded in redacted server logs on unhandled 500 errors.
+ * @param error - Caught error value.
+ * @param fallbackMessage - Safe client-facing message returned when `error` is unexpected.
+ * @returns A typed `NextResponse<ApiResponse<T>>` with appropriate HTTP status code.
+ */
 export function buildApiErrorResponse<T>(
   routeName: string,
   error: unknown,

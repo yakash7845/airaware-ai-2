@@ -4,25 +4,34 @@
  *
  * Implements:
  * - Per-request AbortController timeout (configurable via APP_CONFIG)
- * - Exponential retry with 350 ms back-off on 429/5xx responses
+ * - Bounded retry with 350 ms back-off on 429/5xx responses
+ * - Zod validation of the upstream candidate envelope
  * - Markdown code-fence stripping for JSON responses
  * - Full null-safety: returns null rather than throwing on all error paths
- *
- * This module is intentionally thin — no business logic, no prompt construction,
- * and no schema validation. Those concerns live in assistantService and responseSchema.
  */
+import { z } from 'zod';
 import { APP_CONFIG, getServerGeminiApiKey } from '@/lib/configuration/env';
 import { logger } from '@/lib/logging/logger';
 
-interface GeminiApiCandidateResponse {
-  candidates?: Array<{
-    content?: {
-      parts?: Array<{
-        text?: string;
-      }>;
-    };
-  }>;
-}
+const GeminiCandidateResponseSchema = z.object({
+  candidates: z
+    .array(
+      z.object({
+        content: z
+          .object({
+            parts: z
+              .array(
+                z.object({
+                  text: z.string().optional(),
+                })
+              )
+              .optional(),
+          })
+          .optional(),
+      })
+    )
+    .optional(),
+});
 
 export interface GeminiCallOptions {
   systemInstruction: string;
@@ -32,6 +41,13 @@ export interface GeminiCallOptions {
   temperature?: number;
 }
 
+/**
+ * Invoke the Gemini `generateContent` endpoint with server-side header auth,
+ * request timeout, and bounded retry on transient 429/5xx responses.
+ *
+ * @param options - System instruction, user prompt, token limit, temperature, and MIME type.
+ * @returns Trimmed text content from the first candidate part, or `null` on failure/unconfigured key.
+ */
 export async function callGeminiStructured(options: GeminiCallOptions): Promise<string | null> {
   const apiKey = getServerGeminiApiKey();
   if (!apiKey) return null;
@@ -78,8 +94,14 @@ export async function callGeminiStructured(options: GeminiCallOptions): Promise<
         continue;
       }
 
-      const payload = (await response.json()) as GeminiApiCandidateResponse;
-      return payload.candidates?.[0]?.content?.parts?.[0]?.text?.trim() ?? null;
+      const rawPayload: unknown = await response.json();
+      const parsed = GeminiCandidateResponseSchema.safeParse(rawPayload);
+      if (!parsed.success) {
+        logger.warn('GeminiClient', 'Unexpected Gemini candidate envelope shape');
+        return null;
+      }
+
+      return parsed.data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() ?? null;
     } catch (err: unknown) {
       logger.warn(
         'GeminiClient',
@@ -95,6 +117,12 @@ export async function callGeminiStructured(options: GeminiCallOptions): Promise<
   return null;
 }
 
+/**
+ * Strip optional Markdown code fences (` ```json ... ``` `) from model text and parse JSON.
+ *
+ * @param raw - Raw text returned by {@link callGeminiStructured}.
+ * @returns Parsed `unknown` value ready for downstream Zod schema validation.
+ */
 export function parseJsonFromModel(raw: string): unknown {
   const cleaned = raw
     .replace(/^```(?:json)?\s*/i, '')

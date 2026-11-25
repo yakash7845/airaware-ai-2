@@ -3,9 +3,10 @@
 import { useState } from 'react';
 import { RefreshCw, Send, Trash2 } from 'lucide-react';
 import { PRESET_CITIES } from '@/lib/configuration/presets';
+import { PUBLIC_SECURITY_LIMITS } from '@/lib/configuration/publicConstants';
 import { useEnvironment } from '@/hooks/useEnvironmentContext';
-import { ChatMessage } from '@/types';
-import { postApiJson } from '@/utils/apiClient';
+import { ChatMessage, ChatRequestPayload } from '@/types';
+import { buildLocationRequestBase, postApiJson } from '@/utils/apiClient';
 import { AssistantControls } from '@/components/assistant/AssistantControls';
 import { AssistantMessageCard } from '@/components/assistant/AssistantMessageCard';
 import { ErrorStateCard, LoadingStateCard } from '@/components/ui/StateCards';
@@ -68,12 +69,9 @@ export default function AssistantPage() {
     );
 
     try {
-      const reply = await postApiJson<Record<string, unknown>, ChatMessage>('/api/chat', {
+      const reply = await postApiJson<ChatRequestPayload, ChatMessage>('/api/chat', {
         message: trimmed,
-        lat: currentLocation.latitude,
-        lon: currentLocation.longitude,
-        locationName: currentLocation.name,
-        timezone: currentLocation.timezone || 'auto',
+        ...buildLocationRequestBase(currentLocation),
         compareLocations: compareCity
           ? [
               {
@@ -206,7 +204,7 @@ export default function AssistantPage() {
         <input
           id="assistant-question-input"
           type="text"
-          maxLength={800}
+          maxLength={PUBLIC_SECURITY_LIMITS.maxQuestionLength}
           value={input}
           onChange={(e) => setInput(e.target.value)}
           placeholder={t.assistant.placeholder}

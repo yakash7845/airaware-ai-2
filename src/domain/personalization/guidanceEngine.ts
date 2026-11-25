@@ -1,3 +1,9 @@
+/**
+ * @module guidanceEngine
+ * Deterministic household profile personalization engine.
+ * Translates an immutable {@link AirSnapshot} into age/activity-appropriate non-medical
+ * guidance across EN/TA/HI while strictly preserving AQI invariance across profiles.
+ */
 import { AirSnapshot, CpcbCategoryKey, Language, ProfileCategory, ProfileGuidance } from '@/types';
 import { getCpcbHealthGuidance, POLLUTANT_SPECS } from '@/domain/aqi';
 import { CATEGORY_TEMPLATES } from './categoryTemplates';

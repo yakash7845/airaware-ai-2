@@ -1,3 +1,7 @@
+/**
+ * @module api/location
+ * `GET /api/location` — Searches global locations via server-cached Open-Meteo geocoding.
+ */
 import { NextRequest, NextResponse } from 'next/server';
 import { RequestValidationError } from '@/lib/errors/appError';
 import { enforceRouteRateLimit } from '@/lib/security/withRateLimit';

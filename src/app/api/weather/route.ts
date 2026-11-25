@@ -1,3 +1,7 @@
+/**
+ * @module api/weather
+ * `GET /api/weather` — Returns normalized meteorological context aligned to location local time.
+ */
 import { NextRequest, NextResponse } from 'next/server';
 import { enforceRouteRateLimit } from '@/lib/security/withRateLimit';
 import {

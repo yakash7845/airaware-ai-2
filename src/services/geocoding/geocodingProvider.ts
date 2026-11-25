@@ -1,9 +1,20 @@
+/**
+ * @module geocodingProvider
+ * Server-cached Open-Meteo city geocoding search provider.
+ */
 import { APP_CONFIG } from '@/lib/configuration/env';
 import { OpenMeteoGeoResponseSchema } from '@/lib/validation/openMeteoSchemas';
 import { serverCache } from '@/services/caching/ttlCache';
 import { fetchValidatedJson } from '@/services/http/fetchJson';
 import { GeoLocation } from '@/types';
 
+/**
+ * Search worldwide locations matching a city query (minimum 2 characters),
+ * caching normalized results for 24 hours.
+ *
+ * @param query - Sanitized city search query string.
+ * @returns Array of matching {@link GeoLocation} records (empty if query < 2 chars).
+ */
 export async function searchLocations(query: string): Promise<GeoLocation[]> {
   const trimmed = query.trim();
   if (trimmed.length < 2) return [];

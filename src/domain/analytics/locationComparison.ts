@@ -1,7 +1,28 @@
+/**
+ * @module locationComparison
+ * Pure domain module for comparing two or more AirSnapshot readings across locations.
+ *
+ * Checks timestamp compatibility before computing ranking and summary text so that
+ * callers (the `/api/compare` route and the Explore page) are always aware of
+ * snapshot staleness spread.
+ */
 import { AirSnapshot, ComparedLocationSnapshot, Language, LocationComparisonResult } from '@/types';
 
-const MAX_COMPATIBLE_DRIFT_MS = 90 * 60 * 1000;
+/**
+ * Maximum acceptable difference between snapshot timestamps for a direct AQI comparison
+ * to be considered temporally compatible. 90 minutes is chosen because CAMS hourly model
+ * output typically refreshes on 1-hour boundaries and a half-cycle tolerance covers common
+ * cache-miss scenarios without overstating comparability.
+ */
+const MAX_COMPATIBLE_DRIFT_MS = 90 * 60 * 1_000;
 
+/**
+ * Read the concentration value of a named core pollutant from a snapshot's measurement list.
+ *
+ * @param snapshot - The air snapshot to query.
+ * @param id - Pollutant identifier to look up (`'pm2_5'`, `'pm10'`, `'o3'`, or `'no2'`).
+ * @returns The measurement value, or `null` if the pollutant is not in the snapshot.
+ */
 function readPollutantValue(
   snapshot: AirSnapshot,
   id: 'pm2_5' | 'pm10' | 'o3' | 'no2'

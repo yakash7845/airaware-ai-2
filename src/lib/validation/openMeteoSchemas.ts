@@ -1,3 +1,8 @@
+/**
+ * @module openMeteoSchemas
+ * Runtime Zod schemas validating upstream Open-Meteo air quality, weather, and
+ * geocoding payloads before data enters domain calculations.
+ */
 import { z } from 'zod';
 
 const NumericOrNullArray = z.array(z.number().finite().nullable());

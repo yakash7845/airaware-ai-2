@@ -106,6 +106,28 @@ describe('Personalization, Outdoor Planner & Indoor Advisor', () => {
     });
     expect(insufficient.dataSufficient).toBe(false);
     expect(insufficient.bestWindow).toBeNull();
+
+    // Mixed past + forecast timeline must score only true forecast slots, never trailing past hours
+    const mixedPlan = evaluateOutdoorWindows({
+      hourlySlots: snap.hourlyTimeline,
+      activity: 'WALKING',
+      profileCategory: 'ADULT',
+      language: 'en',
+      locationName: 'Chennai',
+    });
+    expect(mixedPlan.dataSufficient).toBe(true);
+    expect(mixedPlan.filteredSlots.every((slot) => slot.isForecast)).toBe(true);
+
+    // Past-only slots must be rejected as insufficient forecast horizon
+    const pastOnly = snap.hourlyTimeline.filter((slot) => !slot.isForecast);
+    const pastOnlyPlan = evaluateOutdoorWindows({
+      hourlySlots: pastOnly,
+      activity: 'WALKING',
+      profileCategory: 'ADULT',
+      language: 'en',
+      locationName: 'Chennai',
+    });
+    expect(pastOnlyPlan.dataSufficient).toBe(false);
   });
 
   it('enforces strict non-sensor indoor disclaimers and indoor setup rules across languages', () => {

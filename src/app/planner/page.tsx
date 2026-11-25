@@ -3,9 +3,15 @@
 import { useEffect, useState } from 'react';
 import { formatLocalHourLabel } from '@/lib/time/timezone';
 import { useEnvironment } from '@/hooks/useEnvironmentContext';
-import { ActivityType, BestWindowPlan, BestWindowRanking, TimeWindowPreference } from '@/types';
+import {
+  ActivityType,
+  BestWindowPlan,
+  BestWindowRanking,
+  BestWindowRequestPayload,
+  TimeWindowPreference,
+} from '@/types';
 import { evaluateOutdoorWindows } from '@/domain/recommendations/outdoorPlanner';
-import { postApiJson } from '@/utils/apiClient';
+import { buildLocationRequestBase, postApiJson } from '@/utils/apiClient';
 import { PlannerControls } from '@/components/planner/PlannerControls';
 import { PlannerResultView } from '@/components/planner/PlannerResultView';
 import { ErrorStateCard, LoadingStateCard } from '@/components/ui/StateCards';
@@ -46,13 +52,10 @@ export default function OutdoorPlannerPage() {
     async function fetchPlan() {
       setLoadingPlan(true);
       try {
-        const data = await postApiJson<Record<string, unknown>, BestWindowPlan>(
+        const data = await postApiJson<BestWindowRequestPayload, BestWindowPlan>(
           '/api/best-window',
           {
-            lat: currentLocation.latitude,
-            lon: currentLocation.longitude,
-            locationName: currentLocation.name,
-            timezone: currentLocation.timezone || 'auto',
+            ...buildLocationRequestBase(currentLocation),
             activity,
             profileCategory: activeProfile.category,
             language,

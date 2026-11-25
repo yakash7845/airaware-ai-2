@@ -1,3 +1,8 @@
+/**
+ * @module api/air
+ * `GET /api/air` — Returns normalized CAMS air quality, 24h/8h rolling CPCB NAQI,
+ * 1h indicative NAQI, environmental events, trends, and aligned weather context.
+ */
 import { NextRequest, NextResponse } from 'next/server';
 import { enforceRouteRateLimit } from '@/lib/security/withRateLimit';
 import {

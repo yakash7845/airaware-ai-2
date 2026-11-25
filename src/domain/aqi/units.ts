@@ -1,3 +1,8 @@
+/**
+ * @module units
+ * Pollutant concentration unit normalization, CPCB unit conversion without premature
+ * rounding, and consistent UI display formatting.
+ */
 import { PollutantId } from '@/types';
 import { POLLUTANT_SPECS } from './constants';
 
@@ -12,6 +17,12 @@ const UNIT_ALIASES: Record<string, string> = {
   'μg/m3': 'µg/m³',
 };
 
+/**
+ * Normalize unit string variants (ASCII `"ug/m3"`, Greek `"μg/m³"`) to canonical symbols.
+ *
+ * @param rawUnit - Upstream unit label string.
+ * @returns Canonical unit symbol string.
+ */
 export function normalizeUnitSymbol(rawUnit: string): string {
   const key = rawUnit.trim().toLowerCase();
   return UNIT_ALIASES[key] ?? rawUnit.trim();
@@ -20,6 +31,11 @@ export function normalizeUnitSymbol(rawUnit: string): string {
 /**
  * Convert concentration to the exact unit required by CPCB NAQI tables without premature rounding.
  * CPCB requires mg/m³ for CO and µg/m³ for PM2.5, PM10, NO2, SO2, O3, NH3, Pb.
+ *
+ * @param pollutant - Target CPCB pollutant identifier.
+ * @param value - Non-negative finite concentration value.
+ * @param rawUnit - Source concentration unit label.
+ * @returns Normalized `{ cpcbValue, unit }`, or `null` if input/unit is incompatible.
  */
 export function convertConcentrationToCpcbUnit(
   pollutant: PollutantId,

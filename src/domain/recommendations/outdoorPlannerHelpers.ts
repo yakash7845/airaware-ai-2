@@ -1,3 +1,14 @@
+/**
+ * @module outdoorPlannerHelpers
+ * Pure scoring and guidance helpers for the 2-hour Outdoor Activity Planner.
+ *
+ * Responsible for:
+ * - Filtering and resolving the forecast slot pool for a target date/time preference
+ * - Scoring consecutive 2-hour window blocks by AQI, PM₂.₅, ozone, precipitation, and heat
+ * - Generating localized, profile-aware activity guidance text
+ *
+ * No external API calls or side effects; deterministic given the same input.
+ */
 import {
   ActivityType,
   BestWindowPlan,
@@ -10,6 +21,7 @@ import {
 } from '@/types';
 import { getCpcbCategoryByValue, POLLUTANT_SPECS } from '@/domain/aqi';
 import { formatLocalHourLabel } from '@/lib/time/timezone';
+import { meanOf, meanOfRounded } from '@/utils/mathUtils';
 
 export const ACTIVITY_LABELS: Record<ActivityType, Record<Language, string>> = {
   WALKING: { en: 'walking', ta: 'நடைபயிற்சி', hi: 'टहलने' },
@@ -30,6 +42,13 @@ export function getPlannerDisclaimer(lang: Language): string {
   return PLANNER_DISCLAIMERS[lang];
 }
 
+/**
+ * Check whether a given hour number falls within the specified time-of-day preference window.
+ *
+ * @param hourNum - Local hour (0–23) to check.
+ * @param pref - The user's preferred time window (`'ANY'`, `'MORNING'`, `'MIDDAY'`, `'EVENING'`).
+ * @returns `true` if the hour falls within the preference window (or preference is `'ANY'`).
+ */
 function matchesTimePreference(hourNum: number, pref: TimeWindowPreference): boolean {
   if (pref === 'ANY') return true;
   if (pref === 'MORNING') return hourNum >= 5 && hourNum < 11;
@@ -37,13 +56,24 @@ function matchesTimePreference(hourNum: number, pref: TimeWindowPreference): boo
   return hourNum >= 16 && hourNum <= 22;
 }
 
-/** Select the relevant forecast slice matching optional date and time-of-day preference. */
+/** Select the relevant forecast slice matching optional date and time-of-day preference.
+ *
+ * Only slots with `isForecast === true` are considered so that historical hindcast
+ * hours are excluded from activity planning windows.
+ *
+ * @param hourlySlots - Full ordered slot timeline (past + forecast).
+ * @param targetDate - Optional ISO date key (YYYY-MM-DD) to restrict to a specific day.
+ * @param timePreference - Optional time-of-day filter; defaults to `'ANY'`.
+ * @returns The resolved date string and the filtered slot pool ready for scoring.
+ */
 export function selectTargetSlots(
   hourlySlots: readonly HourlySlot[],
   targetDate?: string,
   timePreference: TimeWindowPreference = 'ANY'
 ): { resolvedDate: string; slotsToScore: HourlySlot[] } {
-  const futureSlots = hourlySlots.filter((s) => s.isForecast || hourlySlots.indexOf(s) >= 0);
+  // Only include true forecast slots — the original bug used `|| indexOf(s) >= 0`
+  // which always evaluates to true for any element, returning ALL slots (past + forecast).
+  const futureSlots = hourlySlots.filter((s) => s.isForecast);
   const availableDates = Array.from(
     new Set(futureSlots.map((s) => formatLocalHourLabel(s.localTime).dateKey))
   );
@@ -65,7 +95,21 @@ export function selectTargetSlots(
   };
 }
 
-/** Aggregate and score a 2-hour block against AQI, endurance PM2.5, daytime ozone, rain, and heat. */
+/**
+ * Aggregate and score a consecutive 2-hour window block for outdoor activity suitability.
+ *
+ * Base score = average CPCB NAQI across both slots. Activity-context penalties are
+ * added for endurance PM₂.₅ burden (>60 µg/m³), daytime ozone (>100 µg/m³, 11:00–16:00),
+ * atypical school-commute hours, precipitation (≥1 mm), and high heat (≥36 °C).
+ * Lower total score = more suitable window.
+ *
+ * @param first - The leading slot of the 2-hour block.
+ * @param second - The trailing slot of the 2-hour block.
+ * @param index - Positional index of this block in the candidate pool (used for stable IDs).
+ * @param activity - The activity type influencing which penalties apply.
+ * @returns A {@link BestWindowRanking} with score, weather context, and scoring rationale,
+ *          or `null` if no AQI data is available for the block.
+ */
 export function scoreWindowBlock(
   first: HourlySlot,
   second: HourlySlot,
@@ -78,7 +122,7 @@ export function scoreWindowBlock(
     .filter((v): v is number => v !== null && v !== undefined);
   if (aqiVals.length === 0) return null;
 
-  const avgAqi = Math.round(aqiVals.reduce((a, b) => a + b, 0) / aqiVals.length);
+  const avgAqi = meanOfRounded(aqiVals) ?? 0;
   const pollutantAcc = new Map<CorePollutantId, { sum: number; count: number; unit: string }>();
   const temps: number[] = [];
   const winds: number[] = [];
@@ -106,13 +150,9 @@ export function scoreWindowBlock(
 
   const pm25Avg = readingsUsed.find((r) => r.pollutant === 'pm2_5')?.avgValue ?? 0;
   const o3Avg = readingsUsed.find((r) => r.pollutant === 'o3')?.avgValue ?? 0;
-  const meanOf = (vals: number[]): number | undefined =>
-    vals.length > 0
-      ? Number((vals.reduce((a, b) => a + b, 0) / vals.length).toFixed(1))
-      : undefined;
 
-  const tempAvg = meanOf(temps);
-  const windAvg = meanOf(winds);
+  const tempAvg = meanOf(temps) ?? undefined;
+  const windAvg = meanOf(winds) ?? undefined;
   const precipMax = precips.length > 0 ? Math.max(...precips) : undefined;
   const startLabel = formatLocalHourLabel(first.localTime);
   const endLabel = formatLocalHourLabel(second.localTime);
@@ -197,7 +237,40 @@ export function scoreWindowBlock(
   };
 }
 
-/** Generate localized, profile-aware outdoor activity explanation for top vs peak window. */
+const CATEGORY_SPECIFIC_ACTIVITY_ADVICE: Record<
+  Language,
+  { child: string; senior: string; default: string }
+> = {
+  ta: {
+    child: 'பெரியவர்களிடம் கூறிவிட்டு விளையாடவும்; போதிய தண்ணீர் குடிக்கவும்.',
+    senior: 'அமைதியான வேகத்தில் பூங்கா பாதைகளைத் தேர்ந்தெடுக்கவும்.',
+    default: 'போக்குவரத்து நெரிசல் குறைந்த பசுமைப் பாதைகளைத் தேர்வு செய்யவும்.',
+  },
+  hi: {
+    child: 'खेलते समय पानी पिएं और बड़ों की निगरानी में रहें।',
+    senior: 'शांत गति से टहलें और मुख्य सड़कों की धूल से बचें।',
+    default: 'मुख्य यातायात सड़कों के बजाय पार्कों या खुले मार्गों को प्राथमिकता दें।',
+  },
+  en: {
+    child:
+      'Plan active breaks and hydration; check with a parent or guardian before extended play.',
+    senior: 'Prefer a comfortable pace along shaded, low-traffic paths.',
+    default: 'Prefer park paths or lower-traffic routes to reduce near-road exhaust exposure.',
+  },
+};
+
+/**
+ * Generate localized, profile-aware outdoor activity explanation comparing the top
+ * favorable 2-hour block against the highest-burden block.
+ *
+ * @param category - Household profile category (`CHILD`, `TEEN`, `ADULT`, `SENIOR`, `GENERAL`).
+ * @param actWord - Localized activity label string.
+ * @param best - Top-ranked 2-hour window.
+ * @param worst - Highest-burden 2-hour window.
+ * @param diffPct - Percentage AQI reduction between peak and top windows.
+ * @param language - Target localization language.
+ * @returns Structured explanation copy adapted to language and age profile.
+ */
 export function buildActivityGuidance(
   category: ProfileCategory,
   actWord: string,
@@ -208,17 +281,19 @@ export function buildActivityGuidance(
 ): BestWindowPlan['ageAdaptedExplanation'] {
   const bestAqi = best.averageAqi ?? 0;
   const worstAqi = worst.averageAqi ?? 0;
+  const localizedAdvice = CATEGORY_SPECIFIC_ACTIVITY_ADVICE[language];
+  const activitySpecificAdvice =
+    category === 'CHILD'
+      ? localizedAdvice.child
+      : category === 'SENIOR'
+        ? localizedAdvice.senior
+        : localizedAdvice.default;
 
   if (language === 'ta') {
     return {
       headline: `ஒப்பீட்டளவில் சாதகமான நேரம் (${category}): ${best.timeLabel}`,
       recommendation: `${actWord} செயல்பாட்டிற்கு ${best.timeLabel} (முன்னறிவிப்பு NAQI ${bestAqi}, ${best.aqiCategory}) உச்ச நேரத்தை விட ${diffPct}% குறைந்த மாசு சுமையைக் காட்டுகிறது.`,
-      activitySpecificAdvice:
-        category === 'CHILD'
-          ? 'பெரியவர்களிடம் கூறிவிட்டு விளையாடவும்; போதிய தண்ணீர் குடிக்கவும்.'
-          : category === 'SENIOR'
-            ? 'அமைதியான வேகத்தில் பூங்கா பாதைகளைத் தேர்ந்தெடுக்கவும்.'
-            : 'போக்குவரத்து நெரிசல் குறைந்த பசுமைப் பாதைகளைத் தேர்வு செய்யவும்.',
+      activitySpecificAdvice,
       cautionNote: `${worst.timeLabel} இல் முன்னறிவிப்பு NAQI ${worstAqi} ஆக உயரலாம்.`,
     };
   }
@@ -226,24 +301,14 @@ export function buildActivityGuidance(
     return {
       headline: `तुलनात्मक रूप से अनुकूल समय (${category}): ${best.timeLabel}`,
       recommendation: `${actWord} के लिए ${best.timeLabel} विंडो (अनुमानित NAQI ${bestAqi}, ${best.aqiCategory}) पीक समय की तुलना में ${diffPct}% कम प्रदूषण दर्शाती है।`,
-      activitySpecificAdvice:
-        category === 'CHILD'
-          ? 'खेलते समय पानी पिएं और बड़ों की निगरानी में रहें।'
-          : category === 'SENIOR'
-            ? 'शांत गति से टहलें और मुख्य सड़कों की धूल से बचें।'
-            : 'मुख्य यातायात सड़कों के बजाय पार्कों या खुले मार्गों को प्राथमिकता दें।',
+      activitySpecificAdvice,
       cautionNote: `${worst.timeLabel} के आसपास सूचकांक ${worstAqi} तक बढ़ सकता है।`,
     };
   }
   return {
     headline: `Comparatively Most Favorable Window (${category}): ${best.timeLabel}`,
     recommendation: `For ${actWord}, ${best.timeLabel} ranks lowest on combined pollution and weather score (forecast IN NAQI ${bestAqi}, ${best.aqiCategory} — ${diffPct}% lower than peak ${worst.timeLabel}).`,
-    activitySpecificAdvice:
-      category === 'CHILD'
-        ? 'Plan active breaks and hydration; check with a parent or guardian before extended play.'
-        : category === 'SENIOR'
-          ? 'Prefer a comfortable pace along shaded, low-traffic paths.'
-          : 'Prefer park paths or lower-traffic routes to reduce near-road exhaust exposure.',
+    activitySpecificAdvice,
     cautionNote: `Highest forecast burden falls around ${worst.timeLabel} (IN NAQI ${worstAqi}, ${worst.aqiCategory}).`,
   };
 }

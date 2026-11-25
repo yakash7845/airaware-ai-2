@@ -1,3 +1,8 @@
+/**
+ * @module snapshotService
+ * Orchestrates live Open-Meteo air quality and weather fetches into normalized
+ * {@link AirSnapshot} contracts with rolling CPCB NAQI, events, and trends.
+ */
 import { computeCpcbNaqi, computeRollingCpcbNaqi, POLLUTANT_SPECS } from '@/domain/aqi';
 import { detectEnvironmentalEvents } from '@/domain/analytics/eventDetection';
 import { buildTrendAnalytics } from '@/domain/analytics/trendAnalysis';
@@ -20,6 +25,13 @@ import {
 /**
  * Normalize validated Open-Meteo atmospheric and weather feeds into a unified AirSnapshot
  * with rolling 24h/8h CPCB NAQI, 1h indicative breakdown, events, and trend analytics.
+ *
+ * @param params.airData - Validated Open-Meteo air quality response.
+ * @param params.weatherData - Validated Open-Meteo weather response, or `null` on weather failure.
+ * @param params.location - Selected location metadata attached to normalized records.
+ * @param params.weatherFailed - Indicates meteorological upstream failure for user transparency warnings.
+ * @param params.nowMs - Optional deterministic wall-clock epoch (defaults to `Date.now()`).
+ * @returns Fully normalized {@link AirSnapshot}.
  */
 export function normalizeEnvironmentalSnapshot(params: {
   airData: ValidatedOpenMeteoAir;
@@ -37,11 +49,11 @@ export function normalizeEnvironmentalSnapshot(params: {
   const weatherByLocalTime = new Map<string, number>();
   let weatherCurrentIdx = 0;
   if (weatherData) {
-    const wParsedTimes = weatherData.hourly.time.map((wtRaw) => {
+    const wParsedTimes = weatherData.hourly.time.map((wtRaw, idx) => {
       const parsed = parseOpenMeteoLocalTime(wtRaw, weatherData.utc_offset_seconds);
+      weatherByLocalTime.set(parsed.localTime, idx);
       return parsed;
     });
-    wParsedTimes.forEach((wp, idx) => weatherByLocalTime.set(wp.localTime, idx));
     weatherCurrentIdx = findClosestTimeIndex(wParsedTimes, nowMs);
   }
 
@@ -138,7 +150,17 @@ export function normalizeEnvironmentalSnapshot(params: {
   };
 }
 
-/** Fetch live Open-Meteo air quality and weather feeds concurrently and normalize them. */
+/**
+ * Fetch live Open-Meteo air quality and weather feeds concurrently and normalize them.
+ * Weather failures degrade gracefully with a transparency warning rather than aborting air data.
+ *
+ * @param params.latitude - WGS-84 latitude.
+ * @param params.longitude - WGS-84 longitude.
+ * @param params.locationName - Display label for the requested location.
+ * @param params.timezone - Optional IANA timezone or `'auto'`.
+ * @param params.forceRefresh - When `true`, bypasses and refreshes cached upstream data.
+ * @returns Normalized {@link AirSnapshot} ready for API responses and domain engines.
+ */
 export async function getLocationAirSnapshot(params: {
   latitude: number;
   longitude: number;

@@ -1,3 +1,8 @@
+/**
+ * @module api/indoor-advisor
+ * `POST /api/indoor-advisor` — Synthesizes non-sensor indoor ventilation/hygiene guidance
+ * from server-fetched outdoor conditions and voluntary user room setup inputs.
+ */
 import { NextRequest, NextResponse } from 'next/server';
 import { evaluateIndoorGuidance } from '@/domain/recommendations/indoorAdvisor';
 import { enforceRouteRateLimit } from '@/lib/security/withRateLimit';

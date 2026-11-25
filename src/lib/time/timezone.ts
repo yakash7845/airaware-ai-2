@@ -1,3 +1,8 @@
+/**
+ * @module timezone
+ * Explicit-offset timestamp parsing and formatting utilities preventing UTC host drift
+ * when interpreting Open-Meteo naive local wall-clock strings.
+ */
 import { APP_CONFIG } from '@/lib/configuration/env';
 import { DataSourceKind, FreshnessStatus } from '@/types';
 

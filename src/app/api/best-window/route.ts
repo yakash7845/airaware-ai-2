@@ -1,3 +1,8 @@
+/**
+ * @module api/best-window
+ * `POST /api/best-window` — Evaluates and ranks 2-hour forecast activity windows deterministically
+ * before optional grounded Gemini explanation enrichment.
+ */
 import { NextRequest, NextResponse } from 'next/server';
 import { evaluateOutdoorWindows } from '@/domain/recommendations/outdoorPlanner';
 import { enforceRouteRateLimit } from '@/lib/security/withRateLimit';

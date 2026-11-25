@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { AppTranslations } from '@/i18n';
+import { PROFILE_CATEGORIES } from '@/lib/configuration/presets';
 import { ProfileCategory } from '@/types';
 import { ModalShell } from '../ui/ModalShell';
 
@@ -64,11 +65,11 @@ export function ProfileEditorModal({
             onChange={(e) => onCategoryChange(e.target.value as ProfileCategory)}
             className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-slate-50 text-slate-900"
           >
-            <option value="GENERAL">{t.exposure.roles.GENERAL}</option>
-            <option value="CHILD">{t.exposure.roles.CHILD}</option>
-            <option value="TEEN">{t.exposure.roles.TEEN}</option>
-            <option value="ADULT">{t.exposure.roles.ADULT}</option>
-            <option value="SENIOR">{t.exposure.roles.SENIOR}</option>
+            {PROFILE_CATEGORIES.map((cat) => (
+              <option key={cat} value={cat}>
+                {t.exposure.roles[cat]}
+              </option>
+            ))}
           </select>
         </div>
         {formError && (

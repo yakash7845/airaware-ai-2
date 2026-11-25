@@ -1,9 +1,23 @@
+/**
+ * @module fetchJson
+ * Resilient HTTP JSON client with coordinate validation, in-flight deduplication,
+ * exponential backoff retries, AbortController timeouts, and runtime Zod parsing.
+ */
 import { z } from 'zod';
 import { APP_CONFIG } from '@/lib/configuration/env';
 import { ProviderError } from '@/lib/errors/appError';
 
 const inFlightRequests = new Map<string, Promise<unknown>>();
 
+/**
+ * Validate geographic latitude/longitude bounds and round to 4 decimal places (~11 m precision)
+ * to keep upstream provider cache keys normalized.
+ *
+ * @param latitude - WGS-84 latitude (-90 to 90).
+ * @param longitude - WGS-84 longitude (-180 to 180).
+ * @param provider - Upstream provider label attached to validation errors.
+ * @returns Rounded `{ latRounded, lonRounded }` coordinates.
+ */
 export function assertValidCoordinates(
   latitude: number,
   longitude: number,

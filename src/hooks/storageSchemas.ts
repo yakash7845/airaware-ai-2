@@ -1,3 +1,7 @@
+/**
+ * @module storageSchemas
+ * Zod schemas and default values validating persisted client preferences in `localStorage`.
+ */
 import { z } from 'zod';
 import { AccessibilitySettings, EnvironmentalInterest, GeoLocation } from '@/types';
 import { PRESET_CITIES } from '@/lib/configuration/presets';

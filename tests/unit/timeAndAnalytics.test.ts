@@ -6,6 +6,8 @@ import { calculateFreshness, parseOpenMeteoLocalTime } from '@/lib/time/timezone
 import { normalizeEnvironmentalSnapshot } from '@/services/environment/snapshotService';
 import { ValidatedOpenMeteoAir } from '@/lib/validation/openMeteoSchemas';
 import { GeoLocation } from '@/types';
+import { toLanguageDisplayName } from '@/utils/languageUtils';
+import { arithmeticMean, clamp, meanOf, meanOfRounded } from '@/utils/mathUtils';
 
 function makeLocation(name: string, lat: number, lon: number, tz = 'Asia/Kolkata'): GeoLocation {
   return {
@@ -120,5 +122,21 @@ describe('Timezone Parsing, Event Detection, Trends & Location Comparison', () =
     expect(comparison.locations.length).toBe(2);
     expect(comparison.timestampsCompatible).toBe(false);
     expect(comparison.timestampWarning).toContain('minutes');
+  });
+
+  it('computes shared math and language helpers consistently across domain modules', () => {
+    expect(arithmeticMean([])).toBeNull();
+    expect(meanOf([])).toBeNull();
+    expect(meanOfRounded([])).toBeNull();
+    expect(arithmeticMean([10.12, 20.14])).toBeCloseTo(15.13, 5);
+    expect(meanOf([10.12, 20.14])).toBe(15.1);
+    expect(meanOfRounded([10.12, 20.14])).toBe(15);
+    expect(clamp(120, 0, 100)).toBe(100);
+    expect(clamp(-5, 0, 100)).toBe(0);
+    expect(clamp(42, 0, 100)).toBe(42);
+
+    expect(toLanguageDisplayName('en')).toBe('English');
+    expect(toLanguageDisplayName('ta')).toBe('Tamil');
+    expect(toLanguageDisplayName('hi')).toBe('Hindi');
   });
 });

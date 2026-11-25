@@ -1,3 +1,7 @@
+/**
+ * @module api/compare
+ * `POST /api/compare` — Compares 2–4 validated locations concurrently with timestamp drift checks.
+ */
 import { NextRequest, NextResponse } from 'next/server';
 import { compareLocations } from '@/domain/analytics/locationComparison';
 import { enforceRouteRateLimit } from '@/lib/security/withRateLimit';

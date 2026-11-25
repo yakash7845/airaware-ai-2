@@ -4,7 +4,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { CPCB_CATEGORIES } from '@/domain/aqi';
 import { useEnvironment } from '@/hooks/useEnvironmentContext';
 import { isSameGeoLocation, PRESET_CITIES } from '@/lib/configuration/presets';
-import { GeoLocation, LocationComparisonResult } from '@/types';
+import { CompareRequestPayload, GeoLocation, LocationComparisonResult } from '@/types';
 import { fetchApiJson, postApiJson } from '@/utils/apiClient';
 import { ComparisonTable } from '@/components/maps/ComparisonTable';
 import { DynamicPollutionMap } from '@/components/maps/DynamicPollutionMap';
@@ -26,6 +26,7 @@ export default function ExploreMapPage() {
   const [comparison, setComparison] = useState<LocationComparisonResult | null>(null);
   const [loadingCompare, setLoadingCompare] = useState(true);
   const [compareError, setCompareError] = useState<string | null>(null);
+  const [retryTick, setRetryTick] = useState(0);
   const [addQuery, setAddQuery] = useState('');
   const [searchResults, setSearchResults] = useState<GeoLocation[]>([]);
 
@@ -52,7 +53,7 @@ export default function ExploreMapPage() {
       setLoadingCompare(true);
       setCompareError(null);
       try {
-        const data = await postApiJson<Record<string, unknown>, LocationComparisonResult>(
+        const data = await postApiJson<CompareRequestPayload, LocationComparisonResult>(
           '/api/compare',
           {
             locations: locationsToCompare.map((l) => ({
@@ -79,7 +80,7 @@ export default function ExploreMapPage() {
       active = false;
       controller.abort();
     };
-  }, [locationsToCompare, language]);
+  }, [locationsToCompare, language, retryTick]);
 
   const handleCitySearch = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -126,7 +127,7 @@ export default function ExploreMapPage() {
           title={t.explore.comparisonUnavailable}
           message={compareError}
           retryLabel={t.common.retry}
-          onRetry={() => selectLocation({ ...currentLocation })}
+          onRetry={() => setRetryTick((n) => n + 1)}
         />
       )}
 

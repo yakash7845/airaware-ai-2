@@ -9,9 +9,9 @@ AirAware AI 2.0 is built around four strict invariants:
 3. **Scientific Provenance & Honest Limitations:** Atmospheric model values (Copernicus CAMS via Open-Meteo) are explicitly tagged as `MODEL_ESTIMATE` / `PAST_MODELLED` / `FORECAST`, never misrepresented as physical street-level monitoring stations or indoor sensors.
 4. **Full Separation of Layers:**
    - `src/domain/`: Pure, side-effect-free TypeScript domain engines (`aqi/`, `pollutants/`, `analytics/`, `personalization/`, `recommendations/`), cleanly decomposed with shared helpers and template modules.
-   - `src/services/`: External integrations, Zod response validation, retries, deduplication (`http/fetchJson.ts`), bounded LRU+TTL caching (`caching/ttlCache.ts`), snapshot normalization (`environment/`), and Gemini structured orchestration + deterministic fallback (`gemini/`).
-   - `src/lib/`: Environment configuration (`env.ts`, `presets.ts`), error hierarchy (`appError.ts`), safe logging (`logger.ts`), rate limiting (`rateLimit.ts`), prompt injection guards (`promptGuard.ts`), Zod request validation (`apiSchemas.ts`), and timezone offset parsing (`timezone.ts`).
-   - `src/utils/` & `src/hooks/`: Shared typed API client (`apiClient.ts`), localStorage Zod schemas (`storageSchemas.ts`), and central `EnvironmentProvider`.
+   - `src/services/`: External integrations, Zod response validation, retries, deduplication (`http/fetchJson.ts`, `http/openMeteoClient.ts`), bounded LRU+TTL caching (`caching/ttlCache.ts`), snapshot normalization (`environment/`), and Gemini structured orchestration + deterministic fallback (`gemini/`).
+   - `src/lib/`: Environment configuration (`env.ts`, `publicConstants.ts`, `presets.ts`), error hierarchy (`appError.ts`), safe logging (`logger.ts`), rate limiting (`rateLimit.ts`), prompt injection guards (`promptGuard.ts`), Zod request validation (`apiSchemas.ts`), and timezone offset parsing (`timezone.ts`).
+   - `src/utils/` & `src/hooks/`: Shared typed API client (`apiClient.ts`), numeric and language utilities (`mathUtils.ts`, `languageUtils.ts`), localStorage Zod schemas (`storageSchemas.ts`), and central `EnvironmentProvider`.
    - `src/components/`: Feature-modularized accessible UI components (`assistant/`, `charts/`, `dashboard/`, `education/`, `forecasts/`, `indoor/`, `layout/`, `maps/`, `planner/`, `profiles/`, `ui/`).
    - `src/i18n/`: Full localization dictionaries (`en.ts`, `ta.ts`, `hi.ts`) covering all 10 routes, tables, modals, and controls.
    - `src/app/`: 10 Next.js App Router pages + 9 hardened REST route handlers.

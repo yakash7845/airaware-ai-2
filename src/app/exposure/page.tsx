@@ -5,8 +5,8 @@ import { Plus, ShieldCheck } from 'lucide-react';
 import { buildProfileGuidance } from '@/domain/personalization/guidanceEngine';
 import { buildFamilyProfile, PROFILE_CATEGORY_DEFAULTS } from '@/lib/configuration/presets';
 import { useEnvironment } from '@/hooks/useEnvironmentContext';
-import { FamilyProfile, ProfileCategory, ProfileGuidance } from '@/types';
-import { postApiJson } from '@/utils/apiClient';
+import { ExplainRequestPayload, FamilyProfile, ProfileCategory, ProfileGuidance } from '@/types';
+import { buildLocationRequestBase, postApiJson } from '@/utils/apiClient';
 import { ProfileCard } from '@/components/profiles/ProfileCard';
 import { ProfileEditorModal } from '@/components/profiles/ProfileEditorModal';
 import { ProfileProvenanceModal } from '@/components/profiles/ProfileProvenanceModal';
@@ -46,27 +46,30 @@ export default function PersonalExposurePage() {
     Promise.all(
       uniqueCategories.map(async (cat) => {
         try {
-          const data = await postApiJson<Record<string, unknown>, ProfileGuidance>(
+          const data = await postApiJson<ExplainRequestPayload, ProfileGuidance>(
             '/api/explain',
             {
-              lat: currentLocation.latitude,
-              lon: currentLocation.longitude,
-              locationName: currentLocation.name,
-              timezone: currentLocation.timezone || 'auto',
+              ...buildLocationRequestBase(currentLocation),
               profileCategory: cat,
               language,
             },
             controller.signal
           );
           return [cat, data] as const;
-        } catch {
+        } catch (err: unknown) {
+          if (err instanceof Error && err.name === 'AbortError') {
+            return null;
+          }
           return [cat, buildProfileGuidance(snapshot, cat, language)] as const;
         }
       })
     ).then((entries) => {
       if (!mounted) return;
       const next: Partial<Record<ProfileCategory, ProfileGuidance>> = {};
-      for (const [c, g] of entries) next[c] = g;
+      for (const entry of entries) {
+        if (!entry) continue;
+        next[entry[0]] = entry[1];
+      }
       setGuidanceByCat(next);
     });
 
