@@ -1,0 +1,111 @@
+@import 'tailwindcss';
+
+:root {
+  --bg-canvas: #f8fafc;
+  --bg-surface: #ffffff;
+  --bg-subtle: #f1f5f9;
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --border-subtle: #e2e8f0;
+  --accent-primary: #0f766e;
+  --accent-primary-hover: #115e59;
+  --focus-ring: #0f766e;
+}
+
+html[data-contrast='high'] {
+  --bg-canvas: #ffffff;
+  --bg-surface: #ffffff;
+  --bg-subtle: #e2e8f0;
+  --text-primary: #000000;
+  --text-secondary: #1e293b;
+  --border-subtle: #0f172a;
+  --accent-primary: #064e3b;
+  --accent-primary-hover: #022c22;
+  --focus-ring: #000000;
+}
+
+html[data-text-size='normal'] {
+  font-size: 16px;
+}
+
+html[data-text-size='large'] {
+  font-size: 18px;
+}
+
+html[data-text-size='extra-large'] {
+  font-size: 20px;
+}
+
+body {
+  background-color: var(--bg-canvas);
+  color: var(--text-primary);
+  overflow-x: hidden;
+}
+
+:focus-visible {
+  outline: 2.5px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+html[data-reduced-motion='true'] *,
+html[data-reduced-motion='true'] *::before,
+html[data-reduced-motion='true'] *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
+}
+
+/* Non-color pattern indicators for AQI categories */
+.aqi-pattern-striped {
+  background-image: repeating-linear-gradient(
+    -45deg,
+    transparent,
+    transparent 6px,
+    rgba(255, 255, 255, 0.14) 6px,
+    rgba(255, 255, 255, 0.14) 12px
+  );
+}
+
+.aqi-pattern-dotted {
+  background-image: radial-gradient(rgba(255, 255, 255, 0.22) 1.2px, transparent 1.2px);
+  background-size: 8px 8px;
+}
+
+.aqi-pattern-diagonal {
+  background-image: repeating-linear-gradient(
+    45deg,
+    transparent,
+    transparent 5px,
+    rgba(255, 255, 255, 0.16) 5px,
+    rgba(255, 255, 255, 0.16) 10px
+  );
+}
+
+.aqi-pattern-cross {
+  background-image:
+    linear-gradient(45deg, rgba(255, 255, 255, 0.14) 25%, transparent 25%),
+    linear-gradient(-45deg, rgba(255, 255, 255, 0.14) 25%, transparent 25%);
+  background-size: 10px 10px;
+}
+
+.aqi-pattern-alert {
+  background-image: repeating-linear-gradient(
+    90deg,
+    transparent,
+    transparent 6px,
+    rgba(255, 255, 255, 0.18) 6px,
+    rgba(255, 255, 255, 0.18) 12px
+  );
+}
