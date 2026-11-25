@@ -1,3 +1,14 @@
+/**
+ * @module rateLimit
+ * In-process sliding-window rate limiter for AirAware API routes.
+ *
+ * Uses a per-IP timestamp bucket approach: each request appends a timestamp,
+ * and only entries within the last `windowMs` milliseconds count toward the limit.
+ * Implements LRU eviction when the tracked-key count exceeds MAX_TRACKED_KEYS.
+ *
+ * A single process-global instance is used in development (via globalThis) to
+ * survive Next.js hot-module reloads without resetting state.
+ */
 import { APP_CONFIG } from '@/lib/configuration/env';
 
 interface BucketEntry {
@@ -17,6 +28,14 @@ const MAX_TRACKED_KEYS = 2000;
 export class SlidingWindowRateLimiter {
   private readonly buckets = new Map<string, BucketEntry>();
 
+  /**
+   * Check whether a request from `key` is within the allowed rate, and record it if so.
+   *
+   * @param key - Unique client identifier (e.g. sanitised IP address).
+   * @param maxRequests - Maximum allowed requests within `windowMs`.
+   * @param windowMs - Sliding window length in milliseconds.
+   * @returns A RateLimitDecision describing whether the request is allowed and the current state.
+   */
   check(
     key: string,
     maxRequests: number,
@@ -66,6 +85,7 @@ export class SlidingWindowRateLimiter {
     };
   }
 
+  /** Reset all rate-limit buckets. Intended for use in test teardown only. */
   clear(): void {
     this.buckets.clear();
   }
@@ -95,8 +115,12 @@ if (process.env.NODE_ENV !== 'production') {
 const SAFE_IP_RE = /^[0-9a-fA-F.:]+$/;
 
 /**
- * Extract a sanitized client IP identifier from trusted proxy headers without
- * allowing arbitrary key-injection characters into rate-limiter buckets.
+ * Extract a sanitised client IP identifier from trusted reverse-proxy headers.
+ * Accepts only characters matching `[0-9a-fA-F.:]` to prevent key-injection
+ * attacks against the rate-limiter bucket map.
+ *
+ * @param headers - The incoming request Headers object.
+ * @returns A sanitised IP string, or `'local-client'` as a safe fallback.
  */
 export function extractClientIdentifier(headers: Headers): string {
   const realIp = headers.get('x-real-ip')?.trim();

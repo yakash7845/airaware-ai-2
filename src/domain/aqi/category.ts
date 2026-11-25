@@ -1,3 +1,8 @@
+/**
+ * @module category
+ * CPCB National Air Quality Index category definitions with WCAG AA accessible
+ * colour/pattern pairings. Status is never conveyed by colour alone.
+ */
 import { CpcbCategoryKey } from '@/types';
 import { AqiCategorySpec } from './types';
 
@@ -91,6 +96,13 @@ export const CPCB_CATEGORIES: readonly AqiCategorySpec[] = [
   },
 ];
 
+/**
+ * Resolve the CPCB AQI category for a given numeric NAQI value.
+ * Values above 500 are clamped to Severe; values below 0 or non-finite return null.
+ *
+ * @param aqi - The overall NAQI value (0–500), or null if data is insufficient.
+ * @returns The matching AqiCategorySpec, or null for invalid input.
+ */
 export function getCpcbCategoryByValue(aqi: number | null): AqiCategorySpec | null {
   if (aqi === null || !Number.isFinite(aqi) || aqi < 0) return null;
   const rounded = Math.round(aqi);
@@ -100,6 +112,12 @@ export function getCpcbCategoryByValue(aqi: number | null): AqiCategorySpec | nu
   return CPCB_CATEGORIES[0] ?? null;
 }
 
+/**
+ * Resolve the CPCB AQI category by its string key (e.g. `'GOOD'`, `'SEVERE'`).
+ *
+ * @param key - The CpcbCategoryKey enum value, or null.
+ * @returns The matching AqiCategorySpec, or null if the key is not found.
+ */
 export function getCpcbCategoryByKey(key: CpcbCategoryKey | null): AqiCategorySpec | null {
   if (!key) return null;
   return CPCB_CATEGORIES.find((cat) => cat.key === key) ?? null;

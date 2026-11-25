@@ -1,3 +1,16 @@
+/**
+ * @module promptGuard
+ * Server-side prompt injection and XSS defence for the AI assistant pipeline.
+ *
+ * Screens user input against a curated set of injection patterns before the
+ * text reaches the Gemini API. Also strips Unicode control characters that
+ * could cause unexpected model behaviour or log corruption.
+ *
+ * All patterns are expressed as named, single-responsibility regex objects
+ * to aid auditing and future extension.
+ */
+
+/** Ordered list of prompt-injection and XSS detection patterns. */
 const INJECTION_PATTERNS: ReadonlyArray<{ pattern: RegExp; reason: string }> = [
   {
     pattern:

@@ -1,3 +1,15 @@
+/**
+ * @module calculator
+ * Top-level CPCB National Air Quality Index computation engine.
+ *
+ * Exports two functions:
+ * - `computeCpcbNaqi`        — computes NAQI from a flat array of validated inputs
+ * - `computeRollingCpcbNaqi` — computes rolling-window NAQI from a 2D hourly matrix
+ *
+ * Both functions are pure, deterministic, and side-effect-free. They handle all
+ * edge cases explicitly: missing data, insufficient valid pollutants, clamped
+ * concentrations, and sub-index ties.
+ */
 import { CalculationMethodology, ComputedAqi, PollutantId, PollutantSubIndexDetail } from '@/types';
 import { getCpcbCategoryByValue } from './category';
 import {
@@ -14,11 +26,16 @@ import { validatePollutantInput } from './validation';
 
 /**
  * Compute CPCB National Air Quality Index deterministically from validated pollutant concentrations.
+ *
  * Enforces:
- * - Minimum 3 valid pollutants
- * - At least one of PM2.5 or PM10
- * - Never treats missing values as zero
- * - Clearly labels whether averaging windows meet 24h/8h CPCB requirements or are hourly indicative estimates
+ * - Minimum 3 valid pollutants (CPCB requirement)
+ * - At least one of PM₂.₅ or PM₁₀ must be valid
+ * - Missing values are never treated as zero
+ * - Labels whether averaging windows meet 24h/8h CPCB requirements or are hourly indicative estimates
+ *
+ * @param inputs - Array of raw pollutant concentration inputs to be validated and interpolated.
+ * @param options - Optional metadata: data source kind, source name, timestamp, and rolling-window flag.
+ * @returns A fully populated ComputedAqi object; `value` is null if data is insufficient.
  */
 export function computeCpcbNaqi(
   inputs: PollutantConcentrationInput[],
@@ -199,8 +216,18 @@ export function computeCpcbNaqi(
 
 /**
  * Compute CPCB-aligned rolling-window NAQI at `targetIndex` over a chronological hourly array.
- * Uses trailing 24 hours for PM2.5, PM10, NO2, SO2 (requiring >=16 valid hours)
- * and trailing 8 hours for CO, O3 (requiring >=6 valid hours).
+ *
+ * Uses trailing 24 hours for PM₂.₅, PM₁₀, NO₂, SO₂ (requiring ≥16 valid hours) and trailing
+ * 8 hours for CO, O₃ (requiring ≥6 valid hours), matching CPCB 2014 Section 4.3.
+ *
+ * When fewer valid hours exist than required (e.g. at the start of a series), partial windows
+ * are included but marked with `isRollingWindowAligned: false` so the caller can display an
+ * appropriate "indicative estimate" notice rather than claiming full CPCB compliance.
+ *
+ * @param hourlySeries - 2D matrix: `hourlySeries[i]` is the array of pollutant readings at hour i.
+ * @param targetIndex - The hour index for which to compute the rolling NAQI.
+ * @param options - Optional metadata forwarded to `computeCpcbNaqi`.
+ * @returns A ComputedAqi for the target slot, with appropriate methodology label.
  */
 export function computeRollingCpcbNaqi(
   hourlySeries: ReadonlyArray<ReadonlyArray<RollingHourlyPoint>>,

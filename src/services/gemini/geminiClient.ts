@@ -1,3 +1,16 @@
+/**
+ * @module geminiClient
+ * Low-level Gemini REST API client for AirAware's AI assistant pipeline.
+ *
+ * Implements:
+ * - Per-request AbortController timeout (configurable via APP_CONFIG)
+ * - Exponential retry with 350 ms back-off on 429/5xx responses
+ * - Markdown code-fence stripping for JSON responses
+ * - Full null-safety: returns null rather than throwing on all error paths
+ *
+ * This module is intentionally thin — no business logic, no prompt construction,
+ * and no schema validation. Those concerns live in assistantService and responseSchema.
+ */
 import { APP_CONFIG, getServerGeminiApiKey } from '@/lib/configuration/env';
 import { logger } from '@/lib/logging/logger';
 

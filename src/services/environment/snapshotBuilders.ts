@@ -1,3 +1,11 @@
+/**
+ * @module snapshotBuilders
+ * Pure builder functions that transform validated Open-Meteo API responses into
+ * the AirAware domain model (HourlySlot[], WeatherData, etc.).
+ *
+ * All functions are side-effect-free and independently testable. No network
+ * calls, caching, or logging occurs here — those concerns live in snapshotService.
+ */
 import {
   computeCpcbNaqi,
   convertConcentrationToCpcbUnit,
@@ -34,7 +42,13 @@ const POLLUTANT_MAP: ReadonlyArray<{
   { id: 'o3', key: 'ozone' },
 ];
 
-/** Locate the array index whose parsed timestamp is closest to `nowMs`. */
+/**
+ * Locate the array index whose parsed timestamp is closest to `nowMs`.
+ *
+ * @param times - Chronological array of parsed local timestamps.
+ * @param nowMs - The epoch millisecond value representing "now".
+ * @returns The index in `times` with the smallest absolute time delta to `nowMs`.
+ */
 export function findClosestTimeIndex(
   times: readonly ParsedLocalTimestamp[],
   nowMs: number
@@ -53,7 +67,24 @@ export function findClosestTimeIndex(
   return closestIdx;
 }
 
-/** Build the normalized hourly pollutant + aligned weather timeline and rolling CPCB matrix. */
+/**
+ * Build the normalised hourly pollutant + aligned weather timeline and rolling CPCB matrix.
+ *
+ * For each hourly slot the function:
+ * 1. Converts raw Open-Meteo units to CPCB standard units.
+ * 2. Computes a 1h indicative NAQI for the slot.
+ * 3. Aligns the nearest weather observation by local-time string key.
+ * 4. Accumulates rolling-window input rows for downstream rolling NAQI computation.
+ *
+ * @param params.airData - Zod-validated Open-Meteo CAMS air quality response.
+ * @param params.weatherData - Zod-validated Open-Meteo weather response, or null.
+ * @param params.weatherByLocalTime - Pre-built map from local-time string to weather index.
+ * @param params.parsedTimes - Parsed local timestamps corresponding to each air slot.
+ * @param params.currentIdx - Index of the slot closest to the current wall-clock time.
+ * @param params.location - Resolved GeoLocation for attribution metadata.
+ * @param params.fetchedAt - ISO timestamp of when the upstream data was fetched.
+ * @returns `{ hourlyTimeline, rollingMatrix }` — the full slot array and rolling input matrix.
+ */
 export function buildHourlyTimeline(params: {
   airData: ValidatedOpenMeteoAir;
   weatherData: ValidatedOpenMeteoWeather | null;

@@ -1,3 +1,9 @@
+/**
+ * @module validation
+ * Validates raw pollutant concentration inputs before CPCB NAQI computation.
+ * Ensures unit compatibility, physical plausibility, and correct averaging periods.
+ * Invalid values are rejected cleanly — missing data is never silently treated as zero.
+ */
 import { PollutantId } from '@/types';
 import { POLLUTANT_SPECS } from './constants';
 import { convertConcentrationToCpcbUnit } from './units';
@@ -5,6 +11,12 @@ import { PollutantConcentrationInput } from './types';
 
 const VALID_POLLUTANT_IDS = new Set<string>(Object.keys(POLLUTANT_SPECS));
 
+/**
+ * Type-guard: returns true if `pollutant` is a recognised CPCB PollutantId.
+ *
+ * @param pollutant - Any string to test.
+ * @returns `true` if the string matches a known PollutantId.
+ */
 export function isSupportedPollutant(pollutant: string): pollutant is PollutantId {
   return VALID_POLLUTANT_IDS.has(pollutant);
 }

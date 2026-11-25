@@ -1,3 +1,8 @@
+/**
+ * @module sub-index
+ * Implements CPCB NAQI piecewise linear sub-index calculation per pollutant.
+ * Handles integer-gap bridging, clamping above Severe (500), and full error reporting.
+ */
 import { PollutantId } from '@/types';
 import { CPCB_BREAKPOINTS } from './breakpoints';
 import { POLLUTANT_SPECS } from './constants';

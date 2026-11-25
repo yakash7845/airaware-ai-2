@@ -1,3 +1,15 @@
+/**
+ * @module constants
+ * Official CPCB National Air Quality Index (2014) pollutant specifications.
+ *
+ * Each PollutantSpec includes:
+ * - Averaging periods (24h for PM₂.₅/PM₁₀/NO₂/SO₂, 8h for CO/O₃)
+ * - Minimum valid hours required for a compliant rolling average
+ * - CPCB NAAQS 24h/8h standard limits and WHO 2021 guidelines
+ * - Maximum physically plausible concentration for input validation
+ *
+ * Reference: CPCB, MoEFCC, Govt. of India — National Air Quality Index (October 2014).
+ */
 import { AveragingPeriod, CorePollutantId, PollutantId } from '@/types';
 
 export interface PollutantSpec {

@@ -1,3 +1,16 @@
+/**
+ * @module outdoorPlanner
+ * Deterministic outdoor activity window ranking engine for AirAware.
+ *
+ * Evaluates and ranks all available 2-hour forecast windows by their suitability
+ * for a given physical activity, using:
+ * - Forecast AQI values (from CPCB NAQI computation)
+ * - Activity-specific ventilation sensitivity (MET-weight adjusted AQI thresholds)
+ * - Meteorological comfort factors (temperature, wind speed)
+ *
+ * Rankings are purely deterministic — no AI, no randomness. Unavailable forecast
+ * hours are excluded rather than fabricated (data sufficiency is flagged explicitly).
+ */
 import {
   ActivityType,
   BestWindowPlan,
@@ -15,6 +28,13 @@ import {
   selectTargetSlots,
 } from './outdoorPlannerHelpers';
 
+/**
+ * Build a BestWindowPlan with no ranked windows for cases where the forecast horizon
+ * is insufficient or all slots lack valid AQI computations.
+ *
+ * @param params - Required fields to construct the incomplete plan response.
+ * @returns A BestWindowPlan with `dataSufficient: false` and empty `rankedWindows`.
+ */
 function buildIncompletePlan(params: {
   locationName: string;
   resolvedDate: string;
@@ -51,6 +71,13 @@ function buildIncompletePlan(params: {
   };
 }
 
+/**
+ * Sort window rankings ascending by score, assign rank ordinals, and annotate each
+ * window with a human-readable comparison reason string.
+ *
+ * @param rankings - Mutable array of scored BestWindowRanking objects.
+ * @returns The best window, worst window, and percentage difference between them.
+ */
 function rankAndCompareWindows(rankings: BestWindowRanking[]): {
   bestWindow: BestWindowRanking;
   worstWindow: BestWindowRanking;
@@ -90,7 +117,16 @@ function rankAndCompareWindows(rankings: BestWindowRanking[]): {
 
 /**
  * Evaluate and rank 2-hour outdoor activity windows deterministically using forecast AQI,
- * activity ventilation sensitivity (PM2.5 & afternoon O3), and meteorological comfort.
+ * activity ventilation sensitivity (PM₂.₅ and afternoon O₃), and meteorological comfort.
+ *
+ * @param params.hourlySlots - Chronological forecast slots (must include computed AQI values).
+ * @param params.activity - The physical activity type determining AQI sensitivity weights.
+ * @param params.profileCategory - User age group for age-adapted explanation text.
+ * @param params.language - Display language for all human-readable output strings.
+ * @param params.locationName - Display name for the location (used in plan metadata).
+ * @param params.targetDate - ISO date string for the target day; defaults to the nearest forecast day.
+ * @param params.timePreference - Optional time-of-day filter (`'MORNING'`, `'AFTERNOON'`, `'ANY'`).
+ * @returns A fully populated BestWindowPlan with ranked windows, best/worst picks, and guidance.
  */
 export function evaluateOutdoorWindows(params: {
   hourlySlots: readonly HourlySlot[];

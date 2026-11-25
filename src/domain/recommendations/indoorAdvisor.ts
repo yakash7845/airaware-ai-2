@@ -1,3 +1,20 @@
+/**
+ * @module indoorAdvisor
+ * Non-sensor indoor air quality guidance engine for AirAware.
+ *
+ * All recommendations are derived exclusively from outdoor CAMS atmospheric model
+ * data (~45 km grid) combined with the user's self-reported room configuration.
+ * No physical indoor sensors are involved; every response includes a mandatory
+ * disclaimer to this effect (see `getIndoorDisclaimer` in indoorCopy.ts).
+ *
+ * Guidance categories:
+ * - VENTILATION     — window/door management based on outdoor AQI
+ * - COOKING_EXHAUST — exhaust fan usage during and after cooking
+ * - ROAD_EXPOSURE   — near-road particle management
+ * - DUST_MANAGEMENT — wet-wipe vs. dry dusting recommendations
+ * - PURIFIER_USAGE  — CADR-aware air purifier placement guidance
+ * - SENSOR_AWARENESS— encouraging users to obtain local hardware sensors
+ */
 import {
   IndoorAdvisorPlan,
   IndoorEnvironmentSetup,
@@ -87,6 +104,15 @@ function buildVentilationSuggestion(
 /**
  * Evaluate non-sensor indoor ventilation, dust, cooking, and filtration suggestions
  * coupled to verified outdoor CAMS AQI conditions.
+ *
+ * @param params.setup - User-reported indoor environment configuration.
+ * @param params.outdoorAqi - Current indicative outdoor NAQI value, or null if unavailable.
+ * @param params.outdoorCategory - Current CPCB category label (e.g. `'Satisfactory'`), or null.
+ * @param params.dominantPollutant - The pollutant driving the outdoor NAQI, or null.
+ * @param params.profileCategory - User age/sensitivity category for tailored ageGuidance text.
+ * @param params.language - Display language for all human-readable guidance strings.
+ * @param params.locationName - Display name for the location (used in plan metadata).
+ * @returns A fully populated IndoorAdvisorPlan with prioritised suggestions and disclaimer.
  */
 export function evaluateIndoorGuidance(params: {
   setup: IndoorEnvironmentSetup;

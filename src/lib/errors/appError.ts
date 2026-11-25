@@ -1,3 +1,20 @@
+/**
+ * @module appError
+ * Structured error hierarchy for AirAware API routes.
+ *
+ * All server-side errors extend AppError, which carries:
+ * - A machine-readable `code` for client-side error handling
+ * - An HTTP `statusCode` for the response
+ * - A `retryable` flag so callers know whether to back off and retry
+ * - An optional `provider` field to identify which upstream service failed
+ *
+ * Specialised subclasses:
+ * - `RequestValidationError` — 400 for malformed or out-of-range request bodies
+ * - `RateLimitError`         — 429 with a `retryAfterSeconds` hint
+ * - `ProviderError`          — 502/504 for upstream Open-Meteo or Gemini failures
+ */
+
+/** Union of all machine-readable error codes used by AirAware API routes. */
 export type AppErrorCode =
   | 'VALIDATION_ERROR'
   | 'INVALID_COORDINATES'

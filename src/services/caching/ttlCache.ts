@@ -1,3 +1,15 @@
+/**
+ * @module ttlCache
+ * Generic TTL-based in-memory cache with LRU eviction for AirAware server routes.
+ *
+ * Key design decisions:
+ * - Map insertion order is used as a low-cost LRU approximation; re-inserting
+ *   a hit entry bumps it to the end of the insertion order.
+ * - `purgeExpired` is called before evicting by LRU to avoid needlessly
+ *   removing entries that simply haven't been read yet.
+ * - `globalThis` pinning in development prevents Next.js HMR from creating
+ *   duplicate cache instances and warming from scratch on every save.
+ */
 import { APP_CONFIG } from '@/lib/configuration/env';
 
 interface CacheRecord<T> {

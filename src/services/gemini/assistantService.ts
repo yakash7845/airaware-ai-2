@@ -1,3 +1,21 @@
+/**
+ * @module assistantService
+ * Grounded AI assistant orchestration layer for the AirAware chat endpoint.
+ *
+ * Pipeline:
+ * 1. `inspectUserPrompt` — strips control characters, blocks injection patterns
+ * 2. `buildGroundedContext` — constructs a JSON snapshot of verified CAMS/NAQI data
+ * 3. `callGeminiStructured` — calls Gemini with the grounded system prompt
+ * 4. `StructuredAiOutputSchema.safeParse` — validates Gemini's JSON output with Zod
+ * 5. `validateAiProseSafety` — checks that all cited numbers exist in the verified context
+ * 6. `buildDeterministicChatResponse` — deterministic fallback for any failure path
+ *
+ * Invariants enforced by this module:
+ * - Gemini never receives unvalidated user text
+ * - Gemini output is never passed to the UI without Zod schema validation
+ * - A deterministic response is always available as a fallback
+ * - No personal data or API keys are logged
+ */
 import { inspectUserPrompt } from '@/lib/security/promptGuard';
 import { logger } from '@/lib/logging/logger';
 import { AirSnapshot, ChatMessage, Language, ProfileCategory, StructuredAiResponse } from '@/types';

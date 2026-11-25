@@ -1,3 +1,16 @@
+/**
+ * @module apiClient
+ * Typed JSON API client helpers for AirAware UI modules.
+ *
+ * Wraps the browser `fetch` API with:
+ * - Automatic JSON deserialisation
+ * - Typed unwrapping of the standard `ApiResponse<T>` envelope
+ * - Clean error propagation for failed requests (preserves `AbortError`)
+ * - POST helper with correct `Content-Type: application/json` header
+ *
+ * All client-side data fetching should go through these helpers to ensure
+ * consistent error handling and type safety across pages.
+ */
 import { ApiResponse } from '@/types';
 
 /**

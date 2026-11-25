@@ -1,3 +1,20 @@
+/**
+ * @module eventDetection
+ * Rule-based environmental event detection over AirAware hourly forecast timelines.
+ *
+ * All thresholds are expressed as named constants in EVENT_THRESHOLDS to ensure
+ * transparency and testability. Events identify statistically significant changes
+ * in CAMS atmospheric model data and list possible contributing factors without
+ * asserting unverified local causes.
+ *
+ * Detected event types:
+ * - PM25_SPIKE            — rapid fine-particle increase
+ * - PM10_SURGE            — rapid coarse-particle increase
+ * - CATEGORY_TRANSITION   — CPCB NAQI category boundary crossed upward
+ * - RAPID_DETERIORATION   — NAQI worsens ≥35 points within 3 hours
+ * - OZONE_PEAK            — daytime O₃ ≥100 µg/m³
+ * - FORECAST_DETERIORATION— next-24h mean AQI ≥15% worse than trailing-24h mean
+ */
 import { EnvironmentalEvent, HourlySlot } from '@/types';
 import { formatLocalHourLabel } from '@/lib/time/timezone';
 
@@ -10,11 +27,17 @@ export const EVENT_THRESHOLDS = {
   pm25SpikePercent: 40,
   pm25SpikeAbsDelta: 15,
   pm25ElevatedAbsolute: 90,
+  /** Absolute concentration above which a PM₂.₅ spike is classified HIGH severity. */
+  pm25HighSeverityAbsolute: 120,
   pm10SurgePercent: 45,
   pm10SurgeAbsDelta: 35,
   pm10ElevatedAbsolute: 250,
+  /** Absolute concentration above which a PM₁₀ surge is classified HIGH severity. */
+  pm10HighSeverityAbsolute: 250,
   rapidAqiJumpPoints: 35,
   ozoneHighUgM3: 100,
+  /** O₃ concentration above which an ozone peak is classified HIGH severity. */
+  ozoneHighSeverityUgM3: 168,
   forecastDeteriorationPercent: 15,
 } as const;
 
@@ -39,7 +62,7 @@ const PARTICULATE_RULES: readonly SurgeRule[] = [
     pctThreshold: EVENT_THRESHOLDS.pm25SpikePercent,
     absThreshold: EVENT_THRESHOLDS.pm25SpikeAbsDelta,
     elevatedThreshold: EVENT_THRESHOLDS.pm25ElevatedAbsolute,
-    highSeverityThreshold: 120,
+    highSeverityThreshold: EVENT_THRESHOLDS.pm25HighSeverityAbsolute,
     factors: [
       'Evening or early-morning boundary-layer cooling reducing vertical mixing',
       'Lower wind speeds limiting regional particle dispersion',
@@ -54,7 +77,7 @@ const PARTICULATE_RULES: readonly SurgeRule[] = [
     pctThreshold: EVENT_THRESHOLDS.pm10SurgePercent,
     absThreshold: EVENT_THRESHOLDS.pm10SurgeAbsDelta,
     elevatedThreshold: EVENT_THRESHOLDS.pm10ElevatedAbsolute,
-    highSeverityThreshold: 250,
+    highSeverityThreshold: EVENT_THRESHOLDS.pm10HighSeverityAbsolute,
     factors: [
       'Wind-driven dust resuspension under dry surface conditions',
       'Regional coarse aerosol transport in CAMS atmospheric grid',
@@ -62,10 +85,27 @@ const PARTICULATE_RULES: readonly SurgeRule[] = [
   },
 ];
 
+/**
+ * Extract a specific pollutant's raw value from an hourly slot's measurement array.
+ *
+ * @param slot - The hourly slot to search.
+ * @param id - The pollutant identifier to look up.
+ * @returns The measurement value, or null if unavailable.
+ */
 function findPollutant(slot: HourlySlot, id: 'pm2_5' | 'pm10' | 'o3'): number | null {
   return slot.measurements.find((m) => m.pollutant === id)?.value ?? null;
 }
 
+/**
+ * Evaluate a single particulate surge rule against the current and lookback hourly slots.
+ *
+ * @param rule - The surge detection rule (PM₂.₅ or PM₁₀).
+ * @param slot - The current hourly slot being evaluated.
+ * @param lookbackSlot - The slot 3 hours prior used to compute the delta.
+ * @param index - Array index of the current slot (used to generate a stable event id).
+ * @param hourLabel - Human-readable local time label for the event summary string.
+ * @returns A populated EnvironmentalEvent if triggered, or null otherwise.
+ */
 function detectParticulateSurge(
   rule: SurgeRule,
   slot: HourlySlot,
@@ -103,6 +143,17 @@ function detectParticulateSurge(
   };
 }
 
+/**
+ * Check the current slot for NAQI category transitions and rapid deterioration events,
+ * appending any detected events to the collector via `addEvent`.
+ *
+ * @param slot - The current hourly slot.
+ * @param prevSlot - The immediately preceding hourly slot (1h back).
+ * @param lookbackSlot - The slot 3 hours prior used to compute jump magnitude.
+ * @param index - Array index of the current slot.
+ * @param hourLabel - Human-readable local time label.
+ * @param addEvent - Deduplication-aware event collector callback.
+ */
 function detectCategoryAndJumpEvents(
   slot: HourlySlot,
   prevSlot: HourlySlot,
@@ -178,6 +229,14 @@ function detectCategoryAndJumpEvents(
   }
 }
 
+/**
+ * Detect a forecast deterioration event by comparing the next-24h mean AQI
+ * against the trailing-24h mean. Returns null if data is insufficient.
+ *
+ * @param hourlyTimeline - Full chronological slot array.
+ * @param currentIndex - Index of the slot representing "now".
+ * @returns A FORECAST_DETERIORATION event, or null if threshold is not met.
+ */
 function detectForecastDeteriorationEvent(
   hourlyTimeline: readonly HourlySlot[],
   currentIndex: number
@@ -266,7 +325,7 @@ export function detectEnvironmentalEvents(
         {
           id: `evt-o3-${i}`,
           type: 'OZONE_PEAK',
-          severity: curO3 >= 168 ? 'HIGH' : 'ELEVATED',
+          severity: curO3 >= EVENT_THRESHOLDS.ozoneHighSeverityUgM3 ? 'HIGH' : 'ELEVATED',
           timestamp: slot.time,
           localTime: slot.localTime,
           isForecast: slot.isForecast,
